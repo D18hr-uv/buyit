@@ -1,0 +1,24 @@
+const BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+async function req(path, opts) {
+  const res = await fetch(`${BASE}${path}`, {
+    headers: { "Content-Type": "application/json" },
+    ...opts,
+  });
+  if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+  return res.json();
+}
+
+export const api = {
+  health: () => req("/health"),
+  scenarios: () => req("/scenarios"),
+  startRun: (scenario, situation) =>
+    req("/runs", { method: "POST", body: JSON.stringify({ scenario, situation }) }),
+  approve: (runId, approved, editedQty) =>
+    req(`/runs/${runId}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ approved, edited_qty: editedQty ?? null }),
+    }),
+  purchaseOrders: () => req("/purchase-orders"),
+  runEval: () => req("/eval/run", { method: "POST" }),
+};
