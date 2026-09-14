@@ -73,12 +73,35 @@ class OpenAIChat:
         return {"content": msg.content or "", "tool_calls": tool_calls}
 
 
+# Cached probe of whether the real LLM is actually usable (key valid AND has quota AND the
+# openai package is installed). Determined once per process so embeddings stay dimensionally
+# consistent between seeding and retrieval.
+_llm_available: bool | None = None
+
+
+def llm_available() -> bool:
+    global _llm_available
+    if _llm_available is not None:
+        return _llm_available
+    if not settings.use_real_llm:
+        _llm_available = False
+        return False
+    try:
+        from openai import OpenAI
+
+        client = OpenAI(api_key=settings.openai_api_key)
+        # A tiny embeddings call verifies the key AND that the account has quota.
+        client.embeddings.create(model=settings.embedding_model, input=["ping"])
+        _llm_available = True
+    except Exception as exc:  # ImportError, AuthError, RateLimit/quota, network...
+        print(f"[llm] real LLM unavailable, using deterministic stub: {type(exc).__name__}")
+        _llm_available = False
+    return _llm_available
+
+
 def get_chat() -> "StubChat | OpenAIChat":
-    if settings.use_real_llm:
-        try:
-            return OpenAIChat(settings.llm_model, settings.openai_api_key)
-        except Exception:
-            return StubChat()
+    if llm_available():
+        return OpenAIChat(settings.llm_model, settings.openai_api_key)
     return StubChat()
 
 
@@ -125,9 +148,6 @@ class OpenAIEmbedder:
 
 
 def get_embedder() -> "StubEmbedder | OpenAIEmbedder":
-    if settings.use_real_llm:
-        try:
-            return OpenAIEmbedder(settings.embedding_model, settings.openai_api_key)
-        except Exception:
-            return StubEmbedder()
+    if llm_available():
+        return OpenAIEmbedder(settings.embedding_model, settings.openai_api_key)
     return StubEmbedder()

@@ -30,7 +30,16 @@ class ApprovalRequest(BaseModel):
 
 @router.get("/health")
 def health():
-    return {"status": "ok", "llm": "openai" if settings.use_real_llm else "stub"}
+    from app.llm.provider import llm_available
+    # Report the provider actually in use (real key must also have quota + package installed).
+    return {"status": "ok", "llm": "openai" if llm_available() else "stub"}
+
+
+@router.post("/reset")
+def reset():
+    from app.db.seed import seed
+    seed()
+    return {"status": "reset", "message": "Demo database re-seeded to its initial state."}
 
 
 @router.get("/scenarios")

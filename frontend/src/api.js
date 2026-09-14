@@ -21,4 +21,5 @@ export const api = {
     }),
   purchaseOrders: () => req("/purchase-orders"),
   runEval: () => req("/eval/run", { method: "POST" }),
+  reset: () => req("/reset", { method: "POST" }),
 };

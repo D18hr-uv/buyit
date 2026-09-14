@@ -67,9 +67,27 @@ export default function App() {
             Investigate → decide → act → validate, with a human-in-the-loop and a feedback loop.
           </p>
         </div>
-        {health && (
-          <Pill tone={health.llm === "openai" ? "green" : "gray"}>LLM: {health.llm}</Pill>
-        )}
+        <div className="flex items-center gap-2">
+          {health && (
+            <Pill tone={health.llm === "openai" ? "green" : "gray"}>LLM: {health.llm}</Pill>
+          )}
+          <button
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await api.reset();
+                setRun(null);
+                await refreshPos();
+              } finally {
+                setBusy(false);
+              }
+            }}
+            disabled={busy}
+            className="rounded-lg bg-white px-3 py-1 text-xs font-medium text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50 disabled:opacity-50"
+          >
+            Reset demo data
+          </button>
+        </div>
       </header>
 
       <nav className="mb-5 flex gap-2">

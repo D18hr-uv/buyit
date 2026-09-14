@@ -268,11 +268,14 @@ python -m app.eval.runner                   # evaluation scorecard (6/6)
 
 ### Using a real LLM
 
-Set `OPENAI_API_KEY` in `.env`. **With a key**, the LLM genuinely drives the agent: it calls
-tools to investigate and proposes the decision, and the deterministic guardrail validates /
-overrides it. **Without a key**, a deterministic planner produces the same
-constraint-respecting decisions so everything runs offline. Either way the *numbers* come
-from code, never the model. The provider is swappable (`app/llm/provider.py`).
+Set `OPENAI_API_KEY` in `.env`. **With a usable key**, the LLM genuinely drives the agent: it
+calls tools to investigate and proposes the decision, and the deterministic guardrail
+validates / overrides it. On startup the app probes the key (a tiny embeddings call); if the
+key is missing, invalid, **out of quota**, or the network is down, it falls back to a
+deterministic planner that produces the same constraint-respecting decisions — so the demo
+and tests always run. `GET /health` reports which provider is actually in use (`openai` vs
+`stub`). Either way the *numbers* come from code, never the model. The provider is swappable
+(`app/llm/provider.py`).
 
 ---
 

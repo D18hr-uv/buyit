@@ -123,7 +123,15 @@ def agent_reason(state: AgentState) -> AgentState:
 
     chat = get_chat()
     if chat.provider == "openai":
-        return _agent_reason_llm(state, rules, chat)
+        try:
+            return _agent_reason_llm(state, rules, chat)
+        except Exception as exc:
+            # Graceful fallback: never let an LLM/network failure crash a purchasing run.
+            out = _agent_reason_stub(state, rules, phase)
+            out["trace"] = [_ev("agent_reason", "LLM call failed — fell back to deterministic",
+                                f"{type(exc).__name__}: {exc}. Used the deterministic planner.",
+                                out["trace"][0]["data"])]
+            return out
     return _agent_reason_stub(state, rules, phase)
 
 
@@ -191,7 +199,7 @@ def _agent_reason_stub(state: AgentState, rules: List[str], phase: str) -> Agent
     return {
         "retrieved_rules": rules,
         "proposed_decision": proposed,
-        "trace": [_ev("agent_reason", "Agent reasoning (deterministic, no LLM key)",
+        "trace": [_ev("agent_reason", "Agent reasoning (deterministic planner)",
                       f"Investigated {len(READ_TOOL_NAMES)} tools and proposed: {baseline['type']}.",
                       {"tool_calls": READ_TOOL_NAMES, "retrieved_rules": rules,
                        "llm_proposed": proposed})],
