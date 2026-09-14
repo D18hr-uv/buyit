@@ -22,7 +22,11 @@ export const api = {
   inventory: () => req("/inventory"),
   vendors: () => req("/vendors"),
   purchaseOrders: () => req("/purchase-orders"),
+  createPurchaseOrder: (body) =>
+    req("/purchase-orders", { method: "POST", body: JSON.stringify(body) }),
   clientOrders: () => req("/client-orders"),
+  createClientOrder: (body) =>
+    req("/client-orders", { method: "POST", body: JSON.stringify(body) }),
   budgets: () => req("/budgets"),
   logs: () => req("/logs"),
   runEval: () => req("/eval/run", { method: "POST" }),

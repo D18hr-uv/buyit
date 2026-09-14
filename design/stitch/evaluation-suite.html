@@ -1,0 +1,624 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Agent Evaluation Suite | BuyIt</title>
+<!-- Google Fonts: Inter & JetBrains Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS v3 -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-surface": "#131b2e",
+            "surface-tint": "#b52518",
+            "on-primary-fixed-variant": "#920501",
+            "on-background": "#131b2e",
+            "surface-container": "#eaedff",
+            "surface": "#faf8ff",
+            "secondary": "#006398",
+            "on-secondary-container": "#00476e",
+            "on-secondary-fixed": "#001d31",
+            "on-surface-variant": "#5a403c",
+            "surface-container-highest": "#dae2fd",
+            "outline-variant": "#e3beb8",
+            "tertiary-container": "#00855b",
+            "tertiary-fixed-dim": "#4edea3",
+            "on-tertiary-fixed": "#002113",
+            "surface-variant": "#dae2fd",
+            "background": "#faf8ff",
+            "surface-container-low": "#f2f3ff",
+            "tertiary-fixed": "#6ffbbe",
+            "surface-bright": "#faf8ff",
+            "surface-container-lowest": "#ffffff",
+            "secondary-container": "#5bb8fe",
+            "on-error": "#ffffff",
+            "on-tertiary-container": "#f5fff6",
+            "inverse-primary": "#ffb4a8",
+            "on-tertiary": "#ffffff",
+            "on-tertiary-fixed-variant": "#005236",
+            "surface-dim": "#d2d9f4",
+            "on-primary": "#ffffff",
+            "on-primary-container": "#fffbff",
+            "on-primary-fixed": "#410000",
+            "secondary-fixed-dim": "#93ccff",
+            "secondary-fixed": "#cce5ff",
+            "on-secondary": "#ffffff",
+            "error-container": "#ffdad6",
+            "on-error-container": "#93000a",
+            "on-secondary-fixed-variant": "#004b73",
+            "error": "#ba1a1a",
+            "primary": "#b22315",
+            "inverse-on-surface": "#eef0ff",
+            "inverse-surface": "#283044",
+            "outline": "#8f706b",
+            "primary-container": "#d53d2b",
+            "surface-container-high": "#e2e7ff",
+            "tertiary": "#006947",
+            "primary-fixed": "#ffdad4",
+            "primary-fixed-dim": "#ffb4a8"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "margin": "1rem",
+            "space-sm": "0.5rem",
+            "space-md": "1rem",
+            "space-lg": "1.5rem",
+            "space-xs": "0.25rem",
+            "gutter-desktop": "1.5rem",
+            "margin-desktop": "2rem",
+            "gutter": "1rem",
+            "space-xl": "2rem"
+          },
+          "fontFamily": {
+            "label-xs": ["Inter"],
+            "code-md": ["JetBrains Mono"],
+            "headline-sm": ["Inter"],
+            "code-sm": ["JetBrains Mono"],
+            "headline-lg": ["Inter"],
+            "body-md": ["Inter"],
+            "body-sm": ["Inter"],
+            "title-md": ["Inter"],
+            "display-lg": ["Inter"]
+          },
+          "fontSize": {
+            "label-xs": ["11px", { "lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600" }],
+            "code-md": ["13px", { "lineHeight": "18px", "fontWeight": "500" }],
+            "headline-sm": ["18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "code-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+            "headline-lg": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+            "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+            "title-md": ["15px", { "lineHeight": "22px", "fontWeight": "600" }],
+            "display-lg": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      font-size: 18px;
+      line-height: 1;
+      display: inline-block;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface antialiased min-h-screen flex flex-col font-body-md text-body-md selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- TopNavBar (Shared Component JSON Blueprint & Exact Execution) -->
+<header class="sticky top-0 z-50 flex items-center justify-between w-full px-6 bg-surface dark:bg-inverse-surface border-b border-outline-variant dark:border-outline h-16 shadow-sm dark:shadow-none">
+<!-- Brand Anchor -->
+<div class="flex items-center space-x-8">
+<div class="flex items-center space-x-3">
+<div class="w-8 h-8 rounded-lg bg-primary-container flex items-center justify-center text-on-primary-container shadow-sm">
+<span class="material-symbols-outlined text-white" style="font-size: 20px;">smart_toy</span>
+</div>
+<span class="text-headline-sm font-headline-sm font-bold text-on-surface dark:text-inverse-on-surface tracking-tight">BuyIt</span>
+</div>
+<!-- Navigation Links from JSON -->
+<nav class="hidden md:flex items-center space-x-6 h-16 pt-4">
+<!-- Agent -->
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-inverse-on-surface font-medium pb-4 font-body-md text-body-md transition-colors duration-150" href="#">Agent</a>
+<!-- Inventory -->
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-inverse-on-surface font-medium pb-4 font-body-md text-body-md transition-colors duration-150" href="#">Inventory</a>
+<!-- Purchase Orders -->
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-inverse-on-surface font-medium pb-4 font-body-md text-body-md transition-colors duration-150" href="#">Purchase Orders</a>
+<!-- Client Orders -->
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-inverse-on-surface font-medium pb-4 font-body-md text-body-md transition-colors duration-150" href="#">Client Orders</a>
+<!-- Reorder Logs -->
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-inverse-on-surface font-medium pb-4 font-body-md text-body-md transition-colors duration-150" href="#">Reorder Logs</a>
+<!-- Evaluation (ACTIVE) -->
+<a class="border-b-2 border-primary dark:border-primary-container text-primary dark:text-primary-container font-semibold pb-4 font-body-md text-body-md flex items-center space-x-1.5" href="#">
+<span class="">Evaluation</span>
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+</a>
+</nav>
+</div>
+<!-- Trailing Actions from JSON -->
+<div class="flex items-center space-x-3">
+<!-- Trailing Secondary Action -->
+<div class="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 bg-surface-container-low border border-outline-variant rounded-md font-code-sm text-code-sm text-on-surface-variant">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="">LLM: openai</span>
+</div>
+<!-- Trailing Primary Action -->
+<button class="hidden sm:inline-flex items-center px-3 py-1.5 rounded-lg border border-outline-variant bg-surface text-on-surface-variant font-label-xs text-label-xs hover:bg-surface-container-low transition-colors duration-150 active:scale-[0.98]" type="button">
+        Reset demo data
+      </button>
+<!-- Trailing Icon Actions -->
+<button class="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150" title="notifications" type="button">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150" title="settings" type="button">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<!-- Profile Avatar -->
+<div class="pl-2 border-l border-outline-variant flex items-center">
+<div class="w-8 h-8 rounded-full bg-primary-fixed text-on-primary-fixed font-title-md text-title-md flex items-center justify-center font-bold" title="Enterprise Category Manager avatar">
+          CM
+        </div>
+</div>
+</div>
+</header>
+<!-- Main Content Layout -->
+<main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+<!-- Scenario Context Pill Switcher Sub-header -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-surface-container-lowest p-2 rounded-xl border border-outline-variant shadow-sm">
+<div class="inline-flex p-1 bg-surface-container-low rounded-lg space-x-1 overflow-x-auto">
+<button class="px-3 py-1.5 rounded-md font-label-xs text-label-xs bg-primary-container text-on-primary font-semibold shadow-sm flex items-center space-x-1" type="button">
+<span class="material-symbols-outlined" style="font-size: 14px;">checklist</span>
+<span class="">All Scenarios (6)</span>
+</button>
+<button class="px-3 py-1.5 rounded-md font-label-xs text-label-xs text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors duration-150" type="button">
+          Standard Reorder (S1)
+        </button>
+<button class="px-3 py-1.5 rounded-md font-label-xs text-label-xs text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors duration-150" type="button">
+          Supplier Constraints (S2)
+        </button>
+<button class="px-3 py-1.5 rounded-md font-label-xs text-label-xs text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors duration-150" type="button">
+          Guardrail Failure Edge Cases
+        </button>
+</div>
+<div class="flex items-center space-x-2 font-code-sm text-code-sm text-on-surface-variant px-3 py-1 bg-surface-container-low rounded-lg self-end sm:self-auto">
+<span class="material-symbols-outlined text-secondary" style="font-size: 16px;">terminal</span>
+<span class="">Suite Tag: <strong class="text-on-surface">eval-guardrail-v4.2</strong></span>
+</div>
+</div>
+<!-- Header Section with Title, Description, and Run Action -->
+<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-2 border-b border-outline-variant">
+<div>
+<div class="flex items-center space-x-3">
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Agent Evaluation Suite</h1>
+<span class="px-2 py-0.5 rounded-full font-code-sm text-code-sm bg-tertiary-fixed text-on-tertiary-fixed font-semibold">Live Sandbox</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1 max-w-2xl">
+          Automated test scenarios benchmarked against business rules and procurement guardrails.
+        </p>
+</div>
+<div class="flex items-center space-x-3">
+<button class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-title-md text-title-md bg-primary-container text-on-primary shadow hover:bg-primary transition-all duration-150 active:scale-[0.98] space-x-2" type="button">
+<span class="material-symbols-outlined" style="font-size: 18px;">play_arrow</span>
+<span class="">Run evaluation suite</span>
+</button>
+</div>
+</div>
+<!-- Large Summary Banner -->
+<section class="p-5 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm relative overflow-hidden">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+<!-- Metric 1: Status Pill & Run Info -->
+<div class="lg:col-span-5 flex flex-col space-y-2">
+<div class="flex items-center space-x-3">
+<span class="px-3 py-1 rounded-full font-label-xs text-label-xs bg-tertiary-container text-on-tertiary font-bold tracking-wide flex items-center space-x-1.5 shadow-sm">
+<span class="material-symbols-outlined" style="font-size: 16px;">verified</span>
+<span class="">6/6 scenarios passed</span>
+</span>
+<span class="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider font-semibold">Benchmark Suite Verified</span>
+</div>
+<div class="flex items-center space-x-2 text-on-surface font-title-md text-title-md">
+<span class="">Test Suite Run:</span>
+<span class="font-code-md text-code-md text-primary font-bold">Build #418</span>
+<span class="text-on-surface-variant">•</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant">Model: gpt-4o / openai</span>
+<span class="text-on-surface-variant">•</span>
+<span class="text-tertiary font-bold">100% Pass Rate</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+            Deterministic evaluation completed 4 minutes ago across simulated ERP inventory conditions, catalog price rules, and SLA agreements.
+          </p>
+</div>
+<!-- Bento Metric Grid Indicators -->
+<div class="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-3">
+<div class="p-3 bg-surface-container-low rounded-lg border border-outline-variant">
+<div class="font-label-xs text-label-xs text-on-surface-variant uppercase font-semibold">Execution Duration</div>
+<div class="font-code-md text-code-md font-bold text-on-surface mt-1">4.32s</div>
+<div class="font-code-sm text-code-sm text-tertiary mt-0.5">↓ 0.4s vs baseline</div>
+</div>
+<div class="p-3 bg-surface-container-low rounded-lg border border-outline-variant">
+<div class="font-label-xs text-label-xs text-on-surface-variant uppercase font-semibold">Guardrail Compliance</div>
+<div class="font-code-md text-code-md font-bold text-tertiary mt-1">100.0%</div>
+<div class="font-code-sm text-code-sm text-on-surface-variant mt-0.5">6/6 criteria checked</div>
+</div>
+<div class="p-3 bg-surface-container-low rounded-lg border border-outline-variant">
+<div class="font-label-xs text-label-xs text-on-surface-variant uppercase font-semibold">HITL Interventions</div>
+<div class="font-code-md text-code-md font-bold text-secondary mt-1">1 Routed Gate</div>
+<div class="font-code-sm text-code-sm text-on-surface-variant mt-0.5">Safe policy hold</div>
+</div>
+<div class="p-3 bg-surface-container-low rounded-lg border border-outline-variant">
+<div class="font-label-xs text-label-xs text-on-surface-variant uppercase font-semibold">Cost Impact Projected</div>
+<div class="font-code-md text-code-md font-bold text-on-surface mt-1">$48,250.00</div>
+<div class="font-code-sm text-code-sm text-tertiary mt-0.5">$0 budget breach</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Detailed Scenario Evaluation Cards Bento Grid (1 to 6) -->
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-sm text-headline-sm text-on-surface tracking-tight flex items-center space-x-2">
+<span class="">Executed Test Scenarios</span>
+<span class="text-on-surface-variant font-normal text-body-sm font-body-sm">(Deterministic verification)</span>
+</h2>
+<div class="flex items-center space-x-2">
+<span class="font-label-xs text-label-xs text-on-surface-variant">Filter by Result:</span>
+<span class="px-2 py-0.5 bg-surface-container text-on-surface rounded font-code-sm text-code-sm">All PASS (6)</span>
+</div>
+</div>
+<div class="grid grid-cols-1 gap-4">
+<!-- Card 1: Scenario S1.1 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 shadow-sm hover:shadow transition-shadow duration-150">
+<div class="flex flex-col md:flex-row md:items-start justify-between gap-3 border-b border-outline-variant pb-4">
+<div class="space-y-1">
+<div class="flex items-center space-x-3">
+<span class="font-code-md text-code-md font-bold text-primary">Scenario S1.1</span>
+<span class="text-on-surface-variant">•</span>
+<h3 class="font-title-md text-title-md text-on-surface font-semibold">Standard Reorder Recommendation</h3>
+<span class="px-2 py-0.5 rounded-full font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-bold">STATUS: PASS</span>
+</div>
+<div class="flex items-center space-x-2 font-code-sm text-code-sm text-on-surface-variant">
+<span class="">Decision Target: <strong class="text-on-surface font-semibold">ACCEPT (800 units)</strong></span>
+<span class="">•</span>
+<span class="">Category: Fresh Perishables (Dairy SKU #DR-902)</span>
+</div>
+</div>
+<!-- Execution Meta Metrics -->
+<div class="flex items-center space-x-3 text-right">
+<div class="px-2.5 py-1 bg-surface-container-low rounded border border-outline-variant font-code-sm text-code-sm text-on-surface">
+<span class="text-on-surface-variant">Exec Time:</span> 640ms
+              </div>
+<div class="px-2.5 py-1 bg-surface-container-low rounded border border-outline-variant font-code-sm text-code-sm text-on-surface">
+<span class="text-on-surface-variant">Tool Traces:</span> 4 calls
+              </div>
+</div>
+</div>
+<!-- Criteria Check Badges Grid -->
+<div class="py-3.5 flex flex-wrap gap-2">
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Decision correct
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Obtained info
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Respected constraints
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Right action
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Validated result
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Recovered on failure
+            </span>
+</div>
+<!-- Rationale Verification Report Snippet -->
+<div class="p-3 bg-surface-container-low rounded-lg border border-outline-variant font-code-sm text-code-sm text-on-surface-variant flex flex-col md:flex-row md:items-center justify-between gap-2">
+<div class="flex items-start space-x-2">
+<span class="material-symbols-outlined text-tertiary shrink-0 mt-0.5" style="font-size: 16px;">fact_check</span>
+<div class="">
+<span class="text-on-surface font-semibold">Rationale Report:</span> Safety stock dipped below threshold (120 units &lt; 250 units). Agent queried wholesale price matrices, verified SLA cutoff at 17:00, and synthesized a single draft PO for 800 units compliant with minimum order volume.
+              </div>
+</div>
+<span class="text-secondary font-semibold shrink-0 cursor-pointer hover:underline">View Tool Trace →</span>
+</div>
+</div>
+<!-- Card 2: Scenario S1.2 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 shadow-sm hover:shadow transition-shadow duration-150">
+<div class="flex flex-col md:flex-row md:items-start justify-between gap-3 border-b border-outline-variant pb-4">
+<div class="space-y-1">
+<div class="flex items-center space-x-3">
+<span class="font-code-md text-code-md font-bold text-primary">Scenario S1.2</span>
+<span class="text-on-surface-variant">•</span>
+<h3 class="font-title-md text-title-md text-on-surface font-semibold">Budget Limitation Exceeded</h3>
+<span class="px-2 py-0.5 rounded-full font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-bold">STATUS: PASS</span>
+</div>
+<div class="flex items-center space-x-2 font-code-sm text-code-sm text-on-surface-variant">
+<span class="">Decision Target: <strong class="text-on-surface font-semibold">MODIFY (scaled down to budget cap)</strong></span>
+<span class="">•</span>
+<span class="">Daily Procurement Envelope: $15,000.00</span>
+</div>
+</div>
+<!-- Execution Meta Metrics -->
+<div class="flex items-center space-x-3 text-right">
+<div class="px-2.5 py-1 bg-surface-container-low rounded border border-outline-variant font-code-sm text-code-sm text-on-surface">
+<span class="text-on-surface-variant">Exec Time:</span> 712ms
+              </div>
+<div class="px-2.5 py-1 bg-surface-container-low rounded border border-outline-variant font-code-sm text-code-sm text-on-surface">
+<span class="text-on-surface-variant">Tool Traces:</span> 6 calls
+              </div>
+</div>
+</div>
+<!-- Criteria Check Badges Grid -->
+<div class="py-3.5 flex flex-wrap gap-2">
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Decision correct
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Obtained info
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Respected constraints
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Right action
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Validated result
+            </span>
+</div>
+<!-- Rationale Verification Report Snippet -->
+<div class="p-3 bg-surface-container-low rounded-lg border border-outline-variant font-code-sm text-code-sm text-on-surface-variant flex flex-col md:flex-row md:items-center justify-between gap-2">
+<div class="flex items-start space-x-2">
+<span class="material-symbols-outlined text-tertiary shrink-0 mt-0.5" style="font-size: 16px;">fact_check</span>
+<div class="">
+<span class="text-on-surface font-semibold">Rationale Report:</span> Unadjusted order forecast requested 1,400 units ($18,200). Guardrail rule <code class="font-code-sm bg-surface px-1 py-0.5 rounded border border-outline-variant">MAX_DAILY_BUDGET</code> intercepted request. Agent re-optimized purchase vector, decrementing to exactly 1,150 units ($14,950) without breaching minimum customer safety stock.
+              </div>
+</div>
+<span class="text-secondary font-semibold shrink-0 cursor-pointer hover:underline">View Tool Trace →</span>
+</div>
+</div>
+<!-- Card 3: Scenario S1.3 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 shadow-sm hover:shadow transition-shadow duration-150">
+<div class="flex flex-col md:flex-row md:items-start justify-between gap-3 border-b border-outline-variant pb-4">
+<div class="space-y-1">
+<div class="flex items-center space-x-3">
+<span class="font-code-md text-code-md font-bold text-primary">Scenario S1.3</span>
+<span class="text-on-surface-variant">•</span>
+<h3 class="font-title-md text-title-md text-on-surface font-semibold">Demand Anomaly / Overstock Risk</h3>
+<span class="px-2 py-0.5 rounded-full font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-bold">STATUS: PASS</span>
+</div>
+<div class="flex items-center space-x-2 font-code-sm text-code-sm text-on-surface-variant">
+<span class="">Decision Target: <strong class="text-on-surface font-semibold">REJECT (already covered)</strong></span>
+<span class="">•</span>
+<span class="">Warehouse Capacity: 94% Allocated</span>
+</div>
+</div>
+<!-- Execution Meta Metrics -->
+<div class="flex items-center space-x-3 text-right">
+<div class="px-2.5 py-1 bg-surface-container-low rounded border border-outline-variant font-code-sm text-code-sm text-on-surface">
+<span class="text-on-surface-variant">Exec Time:</span> 490ms
+              </div>
+<div class="px-2.5 py-1 bg-surface-container-low rounded border border-outline-variant font-code-sm text-code-sm text-on-surface">
+<span class="text-on-surface-variant">Tool Traces:</span> 3 calls
+              </div>
+</div>
+</div>
+<!-- Criteria Check Badges Grid -->
+<div class="py-3.5 flex flex-wrap gap-2">
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Decision correct
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Respected constraints
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Overstock prevented
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Validated result
+            </span>
+</div>
+<!-- Rationale Verification Report Snippet -->
+<div class="p-3 bg-surface-container-low rounded-lg border border-outline-variant font-code-sm text-code-sm text-on-surface-variant flex flex-col md:flex-row md:items-center justify-between gap-2">
+<div class="flex items-start space-x-2">
+<span class="material-symbols-outlined text-tertiary shrink-0 mt-0.5" style="font-size: 16px;">fact_check</span>
+<div class="">
+<span class="text-on-surface font-semibold">Rationale Report:</span> External signal detected 3x spike in instant-noodle consumption due to bad weather. Agent cross-checked existing inbound shipments (PO #9042 arriving tomorrow) and existing pallets in staging. Evaluator confirmed current buffer covers 7.2 days of runway; correctly suppressed duplicate reorder trigger.
+              </div>
+</div>
+<span class="text-secondary font-semibold shrink-0 cursor-pointer hover:underline">View Tool Trace →</span>
+</div>
+</div>
+<!-- Card 4: Scenario S1.4 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 shadow-sm hover:shadow transition-shadow duration-150">
+<div class="flex flex-col md:flex-row md:items-start justify-between gap-3 border-b border-outline-variant pb-4">
+<div class="space-y-1">
+<div class="flex items-center space-x-3">
+<span class="font-code-md text-code-md font-bold text-primary">Scenario S1.4</span>
+<span class="text-on-surface-variant">•</span>
+<h3 class="font-title-md text-title-md text-on-surface font-semibold">High Value Threshold Gate</h3>
+<span class="px-2 py-0.5 rounded-full font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-bold">STATUS: PASS</span>
+</div>
+<div class="flex items-center space-x-2 font-code-sm text-code-sm text-on-surface-variant">
+<span class="">Decision Target: <strong class="text-on-surface font-semibold">HUMAN APPROVAL</strong></span>
+<span class="">•</span>
+<span class="">Order Total: $42,000.00 (&gt; $25,000 threshold)</span>
+</div>
+</div>
+<!-- Execution Meta Metrics -->
+<div class="flex items-center space-x-3 text-right">
+<div class="px-2.5 py-1 bg-surface-container-low rounded border border-outline-variant font-code-sm text-code-sm text-on-surface">
+<span class="text-on-surface-variant">Exec Time:</span> 554ms
+              </div>
+<div class="px-2.5 py-1 bg-surface-container-low rounded border border-outline-variant font-code-sm text-code-sm text-on-surface">
+<span class="text-on-surface-variant">Tool Traces:</span> 5 calls
+              </div>
+</div>
+</div>
+<!-- Criteria Check Badges Grid -->
+<div class="py-3.5 flex flex-wrap gap-2">
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Decision correct
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> HITL gate triggered
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Audit trail locked
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Right action
+            </span>
+</div>
+<!-- Rationale Verification Report Snippet -->
+<div class="p-3 bg-surface-container-low rounded-lg border border-outline-variant font-code-sm text-code-sm text-on-surface-variant flex flex-col md:flex-row md:items-center justify-between gap-2">
+<div class="flex items-start space-x-2">
+<span class="material-symbols-outlined text-tertiary shrink-0 mt-0.5" style="font-size: 16px;">fact_check</span>
+<div class="">
+<span class="text-on-surface font-semibold">Rationale Report:</span> Purchase recommendation for premium organic proteins surpassed autonomous execution authority limit ($25,000). Agent locked draft state, generated variance breakdown card, and successfully routed approval notice to Enterprise Category Manager queue.
+              </div>
+</div>
+<span class="text-secondary font-semibold shrink-0 cursor-pointer hover:underline">View Tool Trace →</span>
+</div>
+</div>
+<!-- Card 5: Scenario S2.1 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 shadow-sm hover:shadow transition-shadow duration-150">
+<div class="flex flex-col md:flex-row md:items-start justify-between gap-3 border-b border-outline-variant pb-4">
+<div class="space-y-1">
+<div class="flex items-center space-x-3">
+<span class="font-code-md text-code-md font-bold text-primary">Scenario S2.1</span>
+<span class="text-on-surface-variant">•</span>
+<h3 class="font-title-md text-title-md text-on-surface font-semibold">Supplier Shortfall (500 requested → 250 available)</h3>
+<span class="px-2 py-0.5 rounded-full font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-bold">STATUS: PASS</span>
+</div>
+<div class="flex items-center space-x-2 font-code-sm text-code-sm text-on-surface-variant">
+<span class="">Decision Target: <strong class="text-on-surface font-semibold">RE-PLAN &amp; SPLIT PO</strong></span>
+<span class="">•</span>
+<span class="">Primary Vendor: Apex Foods (Stockout Alert)</span>
+</div>
+</div>
+<!-- Execution Meta Metrics -->
+<div class="flex items-center space-x-3 text-right">
+<div class="px-2.5 py-1 bg-surface-container-low rounded border border-outline-variant font-code-sm text-code-sm text-on-surface">
+<span class="text-on-surface-variant">Exec Time:</span> 890ms
+              </div>
+<div class="px-2.5 py-1 bg-surface-container-low rounded border border-outline-variant font-code-sm text-code-sm text-on-surface">
+<span class="text-on-surface-variant">Tool Traces:</span> 7 calls
+              </div>
+</div>
+</div>
+<!-- Criteria Check Badges Grid (All Green) -->
+<div class="py-3.5 flex flex-wrap gap-2">
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Decision correct
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Obtained info
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Respected constraints
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Right action
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Validated result
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Recovered on failure
+            </span>
+</div>
+<!-- Rationale Verification Report Snippet -->
+<div class="p-3 bg-surface-container-low rounded-lg border border-outline-variant font-code-sm text-code-sm text-on-surface-variant flex flex-col md:flex-row md:items-center justify-between gap-2">
+<div class="flex items-start space-x-2">
+<span class="material-symbols-outlined text-tertiary shrink-0 mt-0.5" style="font-size: 16px;">fact_check</span>
+<div class="">
+<span class="text-on-surface font-semibold">Rationale Report:</span> Primary vendor confirmed shortfall to 250 units. Agent executed alternative vendor lookup tool, validated quality rating (99.1%), and generated secondary PO for remaining 250 units to Delta Logistics with no stockout interruption.
+              </div>
+</div>
+<span class="text-secondary font-semibold shrink-0 cursor-pointer hover:underline">View Tool Trace →</span>
+</div>
+</div>
+<!-- Card 6: Scenario S2.2 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 shadow-sm hover:shadow transition-shadow duration-150">
+<div class="flex flex-col md:flex-row md:items-start justify-between gap-3 border-b border-outline-variant pb-4">
+<div class="space-y-1">
+<div class="flex items-center space-x-3">
+<span class="font-code-md text-code-md font-bold text-primary">Scenario S2.2</span>
+<span class="text-on-surface-variant">•</span>
+<h3 class="font-title-md text-title-md text-on-surface font-semibold">Lead Time vs Alternative Supplier</h3>
+<span class="px-2 py-0.5 rounded-full font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-bold">STATUS: PASS</span>
+</div>
+<div class="flex items-center space-x-2 font-code-sm text-code-sm text-on-surface-variant">
+<span class="">Decision Target: <strong class="text-on-surface font-semibold">EXPEDITE SECONDARY VENDOR</strong></span>
+<span class="">•</span>
+<span class="">SLA Violation Avoidance: &lt; 24h</span>
+</div>
+</div>
+<!-- Execution Meta Metrics -->
+<div class="flex items-center space-x-3 text-right">
+<div class="px-2.5 py-1 bg-surface-container-low rounded border border-outline-variant font-code-sm text-code-sm text-on-surface">
+<span class="text-on-surface-variant">Exec Time:</span> 810ms
+              </div>
+<div class="px-2.5 py-1 bg-surface-container-low rounded border border-outline-variant font-code-sm text-code-sm text-on-surface">
+<span class="text-on-surface-variant">Tool Traces:</span> 5 calls
+              </div>
+</div>
+</div>
+<!-- Criteria Check Badges Grid -->
+<div class="py-3.5 flex flex-wrap gap-2">
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Decision correct
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Obtained info
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Respected constraints
+            </span>
+<span class="inline-flex items-center px-2 py-1 rounded-md font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary font-medium">
+<span class="material-symbols-outlined mr-1" style="font-size: 14px;">check</span> Validated result
+            </span>
+</div>
+<!-- Rationale Verification Report Snippet -->
+<div class="p-3 bg-surface-container-low rounded-lg border border-outline-variant font-code-sm text-code-sm text-on-surface-variant flex flex-col md:flex-row md:items-center justify-between gap-2">
+<div class="flex items-start space-x-2">
+<span class="material-symbols-outlined text-tertiary shrink-0 mt-0.5" style="font-size: 16px;">fact_check</span>
+<div class="">
+<span class="text-on-surface font-semibold">Rationale Report:</span> Primary supplier quoted lead time of 72 hours (+48h beyond store stock depletion curve). Agent balanced marginal expediting surcharge (+$120.00) against potential stockout revenue loss ($4,800.00), correctly triggering secondary vendor dispatch.
+              </div>
+</div>
+<span class="text-secondary font-semibold shrink-0 cursor-pointer hover:underline">View Tool Trace →</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Audit Trace & Benchmark Technical Summary Footer -->
+<div class="p-4 bg-surface-container-low rounded-xl border border-outline-variant flex flex-col sm:flex-row sm:items-center justify-between gap-4 font-body-sm text-body-sm text-on-surface-variant">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-secondary" style="font-size: 18px;">code_blocks</span>
+<span class="">Deterministic evaluation hash: <code class="font-code-sm text-code-sm text-on-surface font-semibold">sha256:7f8a941e3d098e</code></span>
+</div>
+<div class="flex items-center space-x-4">
+<span class="font-code-sm text-code-sm">Evaluation Engine: v2.14-stable</span>
+<button class="text-primary hover:underline font-label-xs text-label-xs font-semibold" type="button">Export JSON Benchmark Artifact</button>
+</div>
+</div>
+</main>
+
+
+</body></html>

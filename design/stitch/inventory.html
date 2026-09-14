@@ -1,0 +1,564 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Inventory Management — AI Purchasing Agent</title>
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-surface": "#131b2e",
+            "surface-tint": "#b52518",
+            "on-primary-fixed-variant": "#920501",
+            "on-background": "#131b2e",
+            "surface-container": "#eaedff",
+            "surface": "#faf8ff",
+            "secondary": "#006398",
+            "on-secondary-container": "#00476e",
+            "on-secondary-fixed": "#001d31",
+            "on-surface-variant": "#5a403c",
+            "surface-container-highest": "#dae2fd",
+            "outline-variant": "#e3beb8",
+            "tertiary-container": "#00855b",
+            "tertiary-fixed-dim": "#4edea3",
+            "on-tertiary-fixed": "#002113",
+            "surface-variant": "#dae2fd",
+            "background": "#faf8ff",
+            "surface-container-low": "#f2f3ff",
+            "tertiary-fixed": "#6ffbbe",
+            "surface-bright": "#faf8ff",
+            "surface-container-lowest": "#ffffff",
+            "secondary-container": "#5bb8fe",
+            "on-error": "#ffffff",
+            "on-tertiary-container": "#f5fff6",
+            "inverse-primary": "#ffb4a8",
+            "on-tertiary": "#ffffff",
+            "on-tertiary-fixed-variant": "#005236",
+            "surface-dim": "#d2d9f4",
+            "on-primary": "#ffffff",
+            "on-primary-container": "#fffbff",
+            "on-primary-fixed": "#410000",
+            "secondary-fixed-dim": "#93ccff",
+            "secondary-fixed": "#cce5ff",
+            "on-secondary": "#ffffff",
+            "error-container": "#ffdad6",
+            "on-error-container": "#93000a",
+            "on-secondary-fixed-variant": "#004b73",
+            "error": "#ba1a1a",
+            "primary": "#b22315",
+            "inverse-on-surface": "#eef0ff",
+            "inverse-surface": "#283044",
+            "outline": "#8f706b",
+            "primary-container": "#d53d2b",
+            "surface-container-high": "#e2e7ff",
+            "tertiary": "#006947",
+            "primary-fixed": "#ffdad4",
+            "primary-fixed-dim": "#ffb4a8"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "margin": "1rem",
+            "space-sm": "0.5rem",
+            "space-md": "1rem",
+            "space-lg": "1.5rem",
+            "space-xs": "0.25rem",
+            "gutter-desktop": "1.5rem",
+            "margin-desktop": "2rem",
+            "gutter": "1rem",
+            "space-xl": "2rem"
+          },
+          "fontFamily": {
+            "label-xs": ["Inter"],
+            "code-md": ["JetBrains Mono"],
+            "headline-sm": ["Inter"],
+            "code-sm": ["JetBrains Mono"],
+            "headline-lg": ["Inter"],
+            "body-md": ["Inter"],
+            "body-sm": ["Inter"],
+            "title-md": ["Inter"],
+            "display-lg": ["Inter"]
+          },
+          "fontSize": {
+            "label-xs": ["11px", { "lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600" }],
+            "code-md": ["13px", { "lineHeight": "18px", "fontWeight": "500" }],
+            "headline-sm": ["18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "code-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+            "headline-lg": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+            "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+            "title-md": ["15px", { "lineHeight": "22px", "fontWeight": "600" }],
+            "display-lg": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+          }
+        },
+      },
+    }
+  </script>
+</head>
+<body class="bg-background text-on-surface antialiased min-h-screen flex flex-col font-body-md text-body-md selection:bg-primary selection:text-on-primary">
+<!-- TopNavBar (Shared Component) -->
+<header class="sticky top-0 z-50 flex items-center justify-between w-full px-6 bg-surface dark:bg-inverse-surface border-b border-outline-variant dark:border-outline h-16 shadow-sm dark:shadow-none">
+<!-- Brand / Product Name Anchor -->
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-on-primary shadow-sm">
+<span class="material-symbols-outlined text-[20px]" data-icon="hub">hub</span>
+</div>
+<span class="text-headline-sm font-headline-sm font-bold text-on-surface dark:text-inverse-on-surface tracking-tight">BuyIt</span>
+</div>
+<!-- Navigation Links from JSON with 'Inventory' Active in Filled Coral Pill per Prompt -->
+<nav class="hidden md:flex items-center gap-1.5 pt-1">
+<a class="px-3.5 py-1.5 rounded-lg text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-inverse-on-surface font-title-md text-title-md transition-all duration-150 active:scale-[0.98]" href="#">
+          Agent
+        </a>
+<a class="px-3.5 py-1.5 rounded-lg bg-primary text-on-primary font-title-md text-title-md font-semibold shadow-sm transition-all duration-150 active:scale-[0.98]" href="#">
+          Inventory
+        </a>
+<a class="px-3.5 py-1.5 rounded-lg text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-inverse-on-surface font-title-md text-title-md transition-all duration-150 active:scale-[0.98]" href="#">
+          Purchase Orders
+        </a>
+<a class="px-3.5 py-1.5 rounded-lg text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-inverse-on-surface font-title-md text-title-md transition-all duration-150 active:scale-[0.98]" href="#">
+          Client Orders
+        </a>
+<a class="px-3.5 py-1.5 rounded-lg text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-inverse-on-surface font-title-md text-title-md transition-all duration-150 active:scale-[0.98]" href="#">
+          Reorder Logs
+        </a>
+<a class="px-3.5 py-1.5 rounded-lg text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-inverse-on-surface font-title-md text-title-md transition-all duration-150 active:scale-[0.98]" href="#">
+          Evaluation
+        </a>
+</nav>
+</div>
+<!-- Trailing Actions from JSON -->
+<div class="flex items-center gap-3">
+<!-- LLM Pill -->
+<div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-surface-container-high text-on-surface font-code-sm text-code-sm rounded-md border border-outline-variant">
+<span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>
+<span class="">LLM: openai</span>
+</div>
+<!-- Reset Demo Data Action Button -->
+<button class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low font-body-sm text-body-sm transition-all duration-150 active:scale-[0.98]">
+<span class="material-symbols-outlined text-[16px]" data-icon="refresh">refresh</span>
+<span class="">Reset demo data</span>
+</button>
+<!-- Trailing Icon Actions -->
+<div class="flex items-center gap-1">
+<button class="relative p-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" title="Notifications">
+<span class="material-symbols-outlined text-[20px]" data-icon="notifications">notifications</span>
+<span class="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full ring-2 ring-surface"></span>
+</button>
+<button class="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" title="Settings">
+<span class="material-symbols-outlined text-[20px]" data-icon="settings">settings</span>
+</button>
+</div>
+<!-- Divider -->
+<div class="h-6 w-px bg-outline-variant mx-1"></div>
+<!-- User Profile Image -->
+<div class="flex items-center gap-2">
+<img class="w-8 h-8 rounded-full border border-outline-variant object-cover ring-2 ring-primary/20" data-alt="A distinguished enterprise category manager portrait wearing professional business attire with soft natural lighting in an ultra-modern logistics control center, reflecting high-reliability procurement operations and quiet analytical composure." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBAdeGBsrxYHMatTDQNZXomFgpUTxU-4zFS7rU2NRaBBFFUuDr25il7MYu9DDeJevgwUREseHA_hCODchNUtsnbrI6Hi7JUhS8IQpo7UUW5F4IOC4ldzHLLn_6L3UbmhzTTFbXjDpVvHGGHqY_okeNv-oUc6-Ex7yyPMpgCmoDeNnqJOVgNPJ2V7Gny7Njvr6wKVKHNX1dGvc0Qq5n9J5LLF52mjdnLhaLsoYiXPeM7K0GHJavFCc-T_w">
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+<!-- Header Area: Title & Primary Controls -->
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+<div>
+<div class="flex items-center gap-2.5">
+<h1 class="text-display-lg font-headline-lg font-bold tracking-tight text-on-surface">Inventory Management</h1>
+<span class="px-2.5 py-0.5 rounded-full font-label-xs text-label-xs bg-tertiary-fixed text-on-tertiary-fixed border border-tertiary-fixed-dim">
+            LIVE SYNC
+          </span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-1">
+          Monitor real-time warehouse counts, dynamic safety buffers, and autonomous agent replenishment thresholds.
+        </p>
+</div>
+<!-- Search Filter, Category Select & Export CSV -->
+<div class="flex flex-wrap items-center gap-3">
+<!-- Search Input -->
+<div class="relative min-w-[240px] flex-1 sm:flex-initial">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-on-surface-variant" data-icon="search">search</span>
+<input class="w-full pl-9 pr-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-sm font-body-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm" placeholder="Search SKU or product..." type="text">
+</div>
+<!-- Category Dropdown -->
+<div class="relative">
+<select class="appearance-none bg-surface-container-lowest border border-outline-variant rounded-lg pl-3 pr-8 py-2 text-body-sm font-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer shadow-sm">
+<option value="all">All Categories</option>
+<option value="produce">Produce</option>
+<option value="dairy">Dairy</option>
+<option value="pantry">Pantry</option>
+<option value="beverages">Beverages</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[18px] text-on-surface-variant" data-icon="expand_more">expand_more</span>
+</div>
+<!-- Export CSV Button -->
+<button class="inline-flex items-center gap-2 px-4 py-2 bg-surface-container-lowest border border-outline-variant hover:border-outline text-on-surface font-title-md text-title-md rounded-lg shadow-sm hover:bg-surface-container-low transition-all duration-150 active:scale-[0.98]">
+<span class="material-symbols-outlined text-[18px]" data-icon="download">download</span>
+<span class="">Export CSV</span>
+</button>
+</div>
+</div>
+<!-- Summary Statistics Bento Cards -->
+<section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+<!-- Card 1: Total SKUs -->
+<div class="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant shadow-sm hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between">
+<span class="text-label-xs font-label-xs uppercase text-on-surface-variant">Total SKUs</span>
+<div class="p-1.5 rounded-lg bg-surface-container text-secondary">
+<span class="material-symbols-outlined text-[18px]" data-icon="inventory_2">inventory_2</span>
+</div>
+</div>
+<div class="mt-2 flex items-baseline gap-2">
+<span class="text-display-lg font-headline-lg font-bold text-on-surface">48</span>
+<span class="text-label-xs font-label-xs text-tertiary flex items-center font-medium">
+<span class="material-symbols-outlined text-[14px]" data-icon="arrow_upward">arrow_upward</span> 100% active
+          </span>
+</div>
+<div class="w-full bg-surface-container h-1.5 rounded-full mt-3 overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 100%;"></div>
+</div>
+</div>
+<!-- Card 2: Below Reorder Pt (Escalation / Coral Accent) -->
+<div class="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+<div class="absolute top-0 left-0 bottom-0 w-1 bg-primary"></div>
+<div class="flex items-center justify-between pl-1">
+<span class="text-label-xs font-label-xs uppercase text-primary font-semibold">Below Reorder Pt</span>
+<div class="p-1.5 rounded-lg bg-error-container text-on-error-container">
+<span class="material-symbols-outlined text-[18px]" data-icon="warning">warning</span>
+</div>
+</div>
+<div class="mt-2 flex items-baseline gap-2 pl-1">
+<span class="text-display-lg font-headline-lg font-bold text-primary">5</span>
+<span class="text-label-xs font-label-xs text-primary font-semibold px-2 py-0.5 rounded-full bg-error-container">
+            Needs PO Trigger
+          </span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-2 pl-1">
+          Agent has queued automated batch drafts.
+        </p>
+</div>
+<!-- Card 3: Total Inventory Value -->
+<div class="p-4 rounded-xl bg-surface-container-lowest border border-outline-variant shadow-sm hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between">
+<span class="text-label-xs font-label-xs uppercase text-on-surface-variant">Total Inventory Value</span>
+<div class="p-1.5 rounded-lg bg-surface-container text-tertiary">
+<span class="material-symbols-outlined text-[18px]" data-icon="payments">payments</span>
+</div>
+</div>
+<div class="mt-2 flex items-baseline gap-2">
+<span class="text-display-lg font-headline-lg font-bold text-on-surface font-code-md">$84,230</span>
+<span class="text-label-xs font-label-xs text-on-surface-variant">USD</span>
+</div>
+<div class="mt-2 flex items-center justify-between text-body-sm font-body-sm text-on-surface-variant">
+<span class="">Avg Turnover Rate:</span>
+<span class="font-code-md font-semibold text-on-surface">4.8 days</span>
+</div>
+</div>
+</section>
+<!-- Table Container Layer with Sticky Header -->
+<div class="rounded-xl border border-outline-variant bg-surface-container-lowest shadow-sm overflow-hidden flex flex-col">
+<div class="overflow-x-auto w-full">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant text-label-xs font-label-xs text-on-surface-variant uppercase tracking-wider sticky top-0 z-10">
+<th class="py-3 px-4 font-semibold" scope="col">SKU</th>
+<th class="py-3 px-4 font-semibold" scope="col">Product Name</th>
+<th class="py-3 px-4 font-semibold" scope="col">Category</th>
+<th class="py-3 px-4 font-semibold text-right" scope="col">On Hand</th>
+<th class="py-3 px-4 font-semibold text-right" scope="col">Safety Stock</th>
+<th class="py-3 px-4 font-semibold text-right" scope="col">Reorder Point</th>
+<th class="py-3 px-4 font-semibold text-right" scope="col">Unit Cost</th>
+<th class="py-3 px-4 font-semibold text-center" scope="col">Stock Status</th>
+<th class="py-3 px-4 font-semibold text-center" scope="col">Agent Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/60 font-body-md text-body-md">
+<!-- Row 1: SKU-1042 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors group">
+<td class="py-3.5 px-4 font-code-md text-code-md text-secondary font-semibold group-hover:underline cursor-pointer">
+                SKU-1042
+              </td>
+<td class="py-3.5 px-4 text-on-surface font-medium">
+                Organic Avocados Hass
+              </td>
+<td class="py-3.5 px-4">
+<span class="px-2.5 py-0.5 rounded-full text-label-xs font-label-xs bg-surface-container text-on-secondary-container">
+                  Produce
+                </span>
+</td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md font-semibold text-on-surface">
+                150
+              </td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md text-on-surface-variant">
+                50
+              </td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md text-on-surface-variant">
+                200
+              </td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md text-on-surface font-medium">
+                $1.45
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-label-xs text-label-xs bg-amber-50 text-amber-800 border border-amber-200">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  Reorder Warning
+                </span>
+</td>
+<td class="py-3.5 px-4 text-center">
+<button class="px-2.5 py-1 rounded bg-surface-container text-on-surface hover:bg-surface-container-high text-label-xs font-label-xs border border-outline-variant transition-colors">
+                  Review PO (80)
+                </button>
+</td>
+</tr>
+<!-- Row 2: SKU-2849 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors group">
+<td class="py-3.5 px-4 font-code-md text-code-md text-secondary font-semibold group-hover:underline cursor-pointer">
+                SKU-2849
+              </td>
+<td class="py-3.5 px-4 text-on-surface font-medium">
+                Whole Milk 1 Gal
+              </td>
+<td class="py-3.5 px-4">
+<span class="px-2.5 py-0.5 rounded-full text-label-xs font-label-xs bg-surface-container text-on-secondary-container">
+                  Dairy
+                </span>
+</td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md font-semibold text-on-surface">
+                420
+              </td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md text-on-surface-variant">
+                100
+              </td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md text-on-surface-variant">
+                300
+              </td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md text-on-surface font-medium">
+                $3.20
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-label-xs text-label-xs bg-emerald-50 text-emerald-800 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  In Stock
+                </span>
+</td>
+<td class="py-3.5 px-4 text-center">
+<span class="text-label-xs font-label-xs text-on-surface-variant italic">Optimal</span>
+</td>
+</tr>
+<!-- Row 3: SKU-3301 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors group">
+<td class="py-3.5 px-4 font-code-md text-code-md text-secondary font-semibold group-hover:underline cursor-pointer">
+                SKU-3301
+              </td>
+<td class="py-3.5 px-4 text-on-surface font-medium">
+                Arabica Coffee Beans 1kg
+              </td>
+<td class="py-3.5 px-4">
+<span class="px-2.5 py-0.5 rounded-full text-label-xs font-label-xs bg-surface-container text-on-secondary-container">
+                  Pantry
+                </span>
+</td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md font-semibold text-on-surface">
+                85
+              </td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md text-on-surface-variant">
+                40
+              </td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md text-on-surface-variant">
+                100
+              </td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md text-on-surface font-medium">
+                $8.50
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-label-xs text-label-xs bg-amber-50 text-amber-800 border border-amber-200">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  Reorder Warning
+                </span>
+</td>
+<td class="py-3.5 px-4 text-center">
+<button class="px-2.5 py-1 rounded bg-surface-container text-on-surface hover:bg-surface-container-high text-label-xs font-label-xs border border-outline-variant transition-colors">
+                  Review PO (45)
+                </button>
+</td>
+</tr>
+<!-- Row 4: SKU-4412 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors group">
+<td class="py-3.5 px-4 font-code-md text-code-md text-secondary font-semibold group-hover:underline cursor-pointer">
+                SKU-4412
+              </td>
+<td class="py-3.5 px-4 text-on-surface font-medium">
+                Sparkling Spring Water 24pk
+              </td>
+<td class="py-3.5 px-4">
+<span class="px-2.5 py-0.5 rounded-full text-label-xs font-label-xs bg-surface-container text-on-secondary-container">
+                  Beverages
+                </span>
+</td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md font-semibold text-on-surface">
+                310
+              </td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md text-on-surface-variant">
+                75
+              </td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md text-on-surface-variant">
+                250
+              </td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md text-on-surface font-medium">
+                $12.00
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-label-xs text-label-xs bg-emerald-50 text-emerald-800 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  In Stock
+                </span>
+</td>
+<td class="py-3.5 px-4 text-center">
+<span class="text-label-xs font-label-xs text-on-surface-variant italic">Optimal</span>
+</td>
+</tr>
+<!-- Row 5: SKU-7740 (Low Stock Alert) -->
+<tr class="hover:bg-error-container/20 transition-colors group bg-error-container/5">
+<td class="py-3.5 px-4 font-code-md text-code-md text-primary font-semibold group-hover:underline cursor-pointer">
+                SKU-7740
+              </td>
+<td class="py-3.5 px-4 text-on-surface font-medium">
+                Extra Virgin Olive Oil 500ml
+              </td>
+<td class="py-3.5 px-4">
+<span class="px-2.5 py-0.5 rounded-full text-label-xs font-label-xs bg-surface-container text-on-secondary-container">
+                  Pantry
+                </span>
+</td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md font-bold text-primary">
+                60
+              </td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md text-on-surface-variant">
+                30
+              </td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md text-on-surface-variant">
+                80
+              </td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md text-on-surface font-medium">
+                $6.80
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-label-xs text-label-xs bg-red-50 text-red-700 border border-red-200 font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                  Low Stock
+                </span>
+</td>
+<td class="py-3.5 px-4 text-center">
+<button class="px-2.5 py-1 rounded bg-primary text-on-primary hover:bg-primary-container text-label-xs font-label-xs shadow-sm transition-all active:scale-95">
+                  Authorize PO
+                </button>
+</td>
+</tr>
+<!-- Row 6: SKU-9012 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors group">
+<td class="py-3.5 px-4 font-code-md text-code-md text-secondary font-semibold group-hover:underline cursor-pointer">
+                SKU-9012
+              </td>
+<td class="py-3.5 px-4 text-on-surface font-medium">
+                Greek Yogurt Plain 32oz
+              </td>
+<td class="py-3.5 px-4">
+<span class="px-2.5 py-0.5 rounded-full text-label-xs font-label-xs bg-surface-container text-on-secondary-container">
+                  Dairy
+                </span>
+</td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md font-semibold text-on-surface">
+                195
+              </td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md text-on-surface-variant">
+                50
+              </td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md text-on-surface-variant">
+                120
+              </td>
+<td class="py-3.5 px-4 text-right font-code-md text-code-md text-on-surface font-medium">
+                $4.15
+              </td>
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-label-xs text-label-xs bg-emerald-50 text-emerald-800 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  In Stock
+                </span>
+</td>
+<td class="py-3.5 px-4 text-center">
+<span class="text-label-xs font-label-xs text-on-surface-variant italic">Optimal</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination Footer -->
+<div class="px-4 py-3 bg-surface-container-low/40 border-t border-outline-variant flex flex-col sm:flex-row items-center justify-between gap-3 text-body-sm font-body-sm">
+<div class="text-on-surface-variant">
+          Showing <span class="font-code-md font-semibold text-on-surface">1</span> to <span class="font-code-md font-semibold text-on-surface">6</span> of <span class="font-code-md font-semibold text-on-surface">48</span> SKUs
+        </div>
+<div class="flex items-center gap-1.5">
+<button class="p-1.5 rounded border border-outline-variant bg-surface-container-lowest text-on-surface-variant disabled:opacity-40 hover:bg-surface-container-low transition-colors" disabled="">
+<span class="material-symbols-outlined text-[18px]" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="w-8 h-8 rounded bg-primary text-on-primary font-code-sm font-semibold flex items-center justify-center shadow-sm">
+            1
+          </button>
+<button class="w-8 h-8 rounded border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low font-code-sm font-medium flex items-center justify-center transition-colors">
+            2
+          </button>
+<button class="w-8 h-8 rounded border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low font-code-sm font-medium flex items-center justify-center transition-colors">
+            3
+          </button>
+<span class="px-1 text-on-surface-variant">...</span>
+<button class="w-8 h-8 rounded border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low font-code-sm font-medium flex items-center justify-center transition-colors">
+            8
+          </button>
+<button class="p-1.5 rounded border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Agent Telemetry & Autonomous Procurement Audit Banner -->
+<div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+<div class="flex items-start gap-3">
+<div class="p-2 rounded-lg bg-primary/10 text-primary mt-0.5">
+<span class="material-symbols-outlined text-[22px]" data-icon="auto_awesome">auto_awesome</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="font-title-md text-title-md font-semibold text-on-surface">Autonomous Reorder Assistant Active</span>
+<span class="px-2 py-0.5 rounded text-code-sm font-code-sm bg-surface-container-lowest text-on-surface-variant border border-outline-variant">
+              Model: GPT-4o-Procure
+            </span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-0.5">
+            5 items currently breaching safety thresholds. Pre-negotiated purchase orders are drafted and awaiting your manual batch sign-off.
+          </p>
+</div>
+</div>
+<div class="flex items-center gap-2 self-end md:self-center">
+<button class="px-3 py-1.5 text-body-sm font-body-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">
+          View Execution Logs
+        </button>
+<button class="px-4 py-1.5 rounded-lg bg-primary text-on-primary font-title-md text-title-md hover:bg-primary-container shadow-sm transition-all active:scale-[0.98]">
+          Review Queued Orders (5)
+        </button>
+</div>
+</div>
+</main>
+
+
+</body></html>

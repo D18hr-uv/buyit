@@ -1,0 +1,680 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>BuyIt — Purchase Orders</title>
+<!-- Google Fonts: Inter & JetBrains Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS v3 with Container Queries and Forms -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-surface": "#131b2e",
+            "surface-tint": "#b52518",
+            "on-primary-fixed-variant": "#920501",
+            "on-background": "#131b2e",
+            "surface-container": "#eaedff",
+            "surface": "#faf8ff",
+            "secondary": "#006398",
+            "on-secondary-container": "#00476e",
+            "on-secondary-fixed": "#001d31",
+            "on-surface-variant": "#5a403c",
+            "surface-container-highest": "#dae2fd",
+            "outline-variant": "#e3beb8",
+            "tertiary-container": "#00855b",
+            "tertiary-fixed-dim": "#4edea3",
+            "on-tertiary-fixed": "#002113",
+            "surface-variant": "#dae2fd",
+            "background": "#faf8ff",
+            "surface-container-low": "#f2f3ff",
+            "tertiary-fixed": "#6ffbbe",
+            "surface-bright": "#faf8ff",
+            "surface-container-lowest": "#ffffff",
+            "secondary-container": "#5bb8fe",
+            "on-error": "#ffffff",
+            "on-tertiary-container": "#f5fff6",
+            "inverse-primary": "#ffb4a8",
+            "on-tertiary": "#ffffff",
+            "on-tertiary-fixed-variant": "#005236",
+            "surface-dim": "#d2d9f4",
+            "on-primary": "#ffffff",
+            "on-primary-container": "#fffbff",
+            "on-primary-fixed": "#410000",
+            "secondary-fixed-dim": "#93ccff",
+            "secondary-fixed": "#cce5ff",
+            "on-secondary": "#ffffff",
+            "error-container": "#ffdad6",
+            "on-error-container": "#93000a",
+            "on-secondary-fixed-variant": "#004b73",
+            "error": "#ba1a1a",
+            "primary": "#b22315",
+            "inverse-on-surface": "#eef0ff",
+            "inverse-surface": "#283044",
+            "outline": "#8f706b",
+            "primary-container": "#d53d2b",
+            "surface-container-high": "#e2e7ff",
+            "tertiary": "#006947",
+            "primary-fixed": "#ffdad4",
+            "primary-fixed-dim": "#ffb4a8"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "margin": "1rem",
+            "space-sm": "0.5rem",
+            "space-md": "1rem",
+            "space-lg": "1.5rem",
+            "space-xs": "0.25rem",
+            "gutter-desktop": "1.5rem",
+            "margin-desktop": "2rem",
+            "gutter": "1rem",
+            "space-xl": "2rem"
+          },
+          "fontFamily": {
+            "label-xs": ["Inter"],
+            "code-md": ["JetBrains Mono"],
+            "headline-sm": ["Inter"],
+            "code-sm": ["JetBrains Mono"],
+            "headline-lg": ["Inter"],
+            "body-md": ["Inter"],
+            "body-sm": ["Inter"],
+            "title-md": ["Inter"],
+            "display-lg": ["Inter"]
+          },
+          "fontSize": {
+            "label-xs": ["11px", { "lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600" }],
+            "code-md": ["13px", { "lineHeight": "18px", "fontWeight": "500" }],
+            "headline-sm": ["18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "code-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+            "headline-lg": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+            "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+            "title-md": ["15px", { "lineHeight": "22px", "fontWeight": "600" }],
+            "display-lg": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+          }
+        },
+      },
+    }
+  </script>
+</head>
+<body class="bg-background text-on-surface font-body-md text-body-md antialiased min-h-screen flex flex-col">
+<!-- Top Navigation Bar (Shared Component strictly mapped from JSON) -->
+<header class="sticky top-0 z-50 flex items-center justify-between w-full px-6 bg-surface border-b border-outline-variant h-16 shadow-sm">
+<!-- Left Identity & Product Name -->
+<div class="flex items-center space-x-8">
+<div class="flex items-center space-x-3">
+<div class="w-9 h-9 rounded-lg bg-primary flex items-center justify-center text-on-primary shadow-sm">
+<span class="material-symbols-outlined" data-icon="smart_toy" style="font-size: 20px;">smart_toy</span>
+</div>
+<span class="text-headline-sm font-headline-sm font-bold text-on-surface tracking-tight">BuyIt</span>
+</div>
+<!-- Navigation Links from JSON with 'Purchase Orders' accurately set active -->
+<nav class="hidden md:flex items-center space-x-6 h-16 pt-4">
+<a class="text-on-surface-variant hover:text-on-surface font-medium pb-4 transition-colors duration-150" href="#">Agent</a>
+<a class="text-on-surface-variant hover:text-on-surface font-medium pb-4 transition-colors duration-150" href="#">Inventory</a>
+<a class="border-b-2 border-primary text-primary font-semibold pb-4" href="#">Purchase Orders</a>
+<a class="text-on-surface-variant hover:text-on-surface font-medium pb-4 transition-colors duration-150" href="#">Client Orders</a>
+<a class="text-on-surface-variant hover:text-on-surface font-medium pb-4 transition-colors duration-150" href="#">Reorder Logs</a>
+<a class="text-on-surface-variant hover:text-on-surface font-medium pb-4 transition-colors duration-150" href="#">Evaluation</a>
+</nav>
+</div>
+<!-- Right Trailing Actions -->
+<div class="flex items-center space-x-3">
+<!-- Trailing secondary action: LLM Runtime status -->
+<div class="hidden lg:flex items-center px-2.5 py-1 rounded-full bg-surface-container-low border border-outline-variant text-on-surface-variant text-code-sm font-code-sm">
+<span class="w-2 h-2 rounded-full bg-tertiary mr-2 animate-pulse"></span>
+<span class="">LLM: openai</span>
+</div>
+<!-- Trailing primary action button -->
+<button class="px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-low transition-all duration-150 active:scale-[0.98] text-body-sm font-body-sm font-medium flex items-center space-x-1.5 shadow-sm">
+<span class="material-symbols-outlined" data-icon="refresh" style="font-size: 16px;">refresh</span>
+<span class="">Reset demo data</span>
+</button>
+<div class="h-6 w-px bg-outline-variant mx-1"></div>
+<!-- Trailing icon actions -->
+<button class="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors relative" title="Notifications">
+<span class="material-symbols-outlined" data-icon="notifications" style="font-size: 20px;">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary ring-2 ring-surface"></span>
+</button>
+<button class="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" title="Settings">
+<span class="material-symbols-outlined" data-icon="settings" style="font-size: 20px;">settings</span>
+</button>
+<!-- Profile Avatar -->
+<div class="flex items-center pl-2">
+<img alt="Enterprise Category Manager avatar" class="w-8 h-8 rounded-full border border-outline-variant object-cover shadow-sm" data-alt="Corporate headshot of an enterprise category manager looking confident in a modern glass office setting with high-key ambient light and soft blurred logistics dashboards in the background, professional corporate style with coral and slate accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDf4YKBA79Q7NI1o1VnvoLaqXsrH0OlR1JkZ1-C2XDmAJLYKvAJySoI4v97B1eLpq_ScdOjW2BmHrHwxp_vpesNOA4kCYeuXJZ9ou8mJFUlsSblwCDWT1iRqccwyog_H70fnhrC2f4ilNB7_WkoCogi8vx-d-ZHBuhtyegEfD4EQdvW3soDChipC6TZt0LCnBWATw6sUxoSWfa89rGa8DfZjdlrmpQgY858l7OvVKoV5-Vgk6Pr4TZ9VA">
+</div>
+</div>
+</header>
+<!-- Context Sub-Bar & Breadcrumbs -->
+<div class="bg-surface-container-lowest border-b border-outline-variant px-6 py-3">
+<div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+<div class="flex items-center space-x-3">
+<span class="text-label-xs font-label-xs text-on-surface-variant uppercase tracking-wider">Procurement Control</span>
+<span class="text-outline-variant font-medium">/</span>
+<span class="text-title-md font-title-md text-on-surface">Purchase Orders (PO) Command</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-secondary text-label-xs font-label-xs font-semibold border border-surface-container-highest">Syncing Live</span>
+</div>
+<!-- Segmented Tab Pill for Sub-Scenarios -->
+<div class="flex items-center bg-surface-container-low p-1 rounded-lg border border-outline-variant">
+<button class="px-3 py-1 rounded-md text-body-sm font-body-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Drafts (4)</button>
+<button class="px-3 py-1 rounded-md bg-primary-container text-on-primary text-body-sm font-body-sm font-semibold shadow-sm transition-all">Vendor POs (12)</button>
+<button class="px-3 py-1 rounded-md text-body-sm font-body-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">Archived</button>
+</div>
+</div>
+</div>
+<!-- Main Canvas -->
+<main class="flex-1 max-w-7xl w-full mx-auto px-6 py-6 space-y-6">
+<!-- Shortfall HITL Alert Notification Banner -->
+<div class="bg-surface-container-lowest border-l-4 border-l-primary-container border border-outline-variant rounded-xl p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="flex items-start space-x-3.5">
+<div class="w-9 h-9 rounded-lg bg-error-container text-on-error-container flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined" data-icon="warning" style="font-size: 20px;">warning</span>
+</div>
+<div>
+<div class="flex items-center space-x-2">
+<h2 class="text-title-md font-title-md text-on-surface font-semibold">Vendor Shortfall Detected on Daily Dairy Co.</h2>
+<span class="px-2 py-0.5 rounded-full bg-error-container text-on-error-container text-label-xs font-label-xs font-bold uppercase">Critical Escalation</span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-0.5">
+            PO-2026-0890 confirmed only <strong class="text-on-surface">250 of 500 units</strong> for Organic Whole Milk 1gal (SKU-3301). Automated re-routing recommendation is staged.
+          </p>
+</div>
+</div>
+<div class="flex items-center space-x-3 shrink-0 self-end md:self-center">
+<button class="px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-low text-body-sm font-body-sm font-medium transition-colors">
+          Dismiss Alert
+        </button>
+<button class="px-4 py-1.5 rounded-lg bg-primary-container text-on-primary hover:bg-primary text-body-sm font-body-sm font-semibold flex items-center space-x-1.5 shadow-sm transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined" data-icon="psychology" style="font-size: 18px;">psychology</span>
+<span class="">Execute Agent Re-plan</span>
+</button>
+</div>
+</div>
+<!-- Summary Metric Cards (4 Bento KPIs) -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+<!-- Metric 1: Active POs -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between">
+<span class="text-label-xs font-label-xs text-on-surface-variant uppercase tracking-wider">Active POs</span>
+<div class="w-8 h-8 rounded-lg bg-surface-container-low text-secondary flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="inventory_2" style="font-size: 18px;">inventory_2</span>
+</div>
+</div>
+<div class="mt-2 flex items-baseline space-x-2">
+<span class="text-display-lg font-display-lg text-on-surface font-bold tracking-tight">12</span>
+<span class="text-body-sm font-body-sm text-tertiary font-medium flex items-center">
+<span class="material-symbols-outlined" data-icon="trending_up" style="font-size: 16px;">trending_up</span>
+            +2 today
+          </span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-1">Across 8 verified quick-comm suppliers</p>
+</div>
+<!-- Metric 2: Total Committed -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between">
+<span class="text-label-xs font-label-xs text-on-surface-variant uppercase tracking-wider">Total Committed</span>
+<div class="w-8 h-8 rounded-lg bg-surface-container-low text-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="payments" style="font-size: 18px;">payments</span>
+</div>
+</div>
+<div class="mt-2 flex items-baseline space-x-2">
+<span class="text-display-lg font-display-lg text-on-surface font-bold font-code-md tracking-tight">$34,850</span>
+<span class="text-body-sm font-body-sm text-on-surface-variant font-medium">USD</span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-1">94.2% within dynamic budget ceiling</p>
+</div>
+<!-- Metric 3: Pending Vendor Confirmation -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between">
+<span class="text-label-xs font-label-xs text-on-surface-variant uppercase tracking-wider">Pending Confirmation</span>
+<div class="w-8 h-8 rounded-lg bg-surface-container-low text-secondary flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="pending_actions" style="font-size: 18px;">pending_actions</span>
+</div>
+</div>
+<div class="mt-2 flex items-baseline space-x-2">
+<span class="text-display-lg font-display-lg text-on-surface font-bold tracking-tight">3</span>
+<span class="text-body-sm font-body-sm text-on-surface-variant">Avg response: 18m</span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-1">EDI dispatch awaiting ACK handshake</p>
+</div>
+<!-- Metric 4: Shortfall Alerts -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow ring-1 ring-error-container">
+<div class="flex items-center justify-between">
+<span class="text-label-xs font-label-xs text-error font-bold uppercase tracking-wider">Shortfall Alerts</span>
+<div class="w-8 h-8 rounded-lg bg-error-container text-on-error-container flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="error_outline" style="font-size: 18px;">error_outline</span>
+</div>
+</div>
+<div class="mt-2 flex items-baseline space-x-2">
+<span class="text-display-lg font-display-lg text-error font-bold tracking-tight">1</span>
+<span class="px-2 py-0.5 rounded-full bg-error-container text-on-error-container text-label-xs font-label-xs font-bold uppercase">Needs Action</span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-1">Daily Dairy Co. (-250 units shortfall)</p>
+</div>
+</div>
+<!-- Purchase Orders Data Table Section -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden flex flex-col">
+<!-- Table Filter Bar & Search -->
+<div class="p-4 border-b border-outline-variant bg-surface-container-lowest flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+<!-- Status Filter Tabs -->
+<div class="flex items-center space-x-1.5 overflow-x-auto pb-1 sm:pb-0">
+<button class="px-3 py-1.5 rounded-lg bg-primary-container text-on-primary text-body-sm font-body-sm font-semibold shadow-sm">
+            All (12)
+          </button>
+<button class="px-3 py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low text-body-sm font-body-sm font-medium transition-colors">
+            Confirmed (8)
+          </button>
+<button class="px-3 py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low text-body-sm font-body-sm font-medium flex items-center space-x-1.5 transition-colors">
+<span class="">Partial</span>
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+</button>
+<button class="px-3 py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low text-body-sm font-body-sm font-medium transition-colors">
+            Open (3)
+          </button>
+</div>
+<!-- Search Input & Quick Export -->
+<div class="flex items-center space-x-2.5">
+<div class="relative w-full sm:w-64">
+<span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="search" style="font-size: 18px;">search</span>
+</span>
+<input class="w-full pl-9 pr-3 py-1.5 rounded-lg border border-outline-variant bg-surface text-on-surface placeholder:text-on-surface-variant/60 text-body-sm font-body-sm focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-transparent transition-all" placeholder="Filter PO, SKU, or vendor..." type="text">
+</div>
+<button class="p-1.5 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-low transition-colors" title="Export CSV">
+<span class="material-symbols-outlined" data-icon="download" style="font-size: 18px;">download</span>
+</button>
+</div>
+</div>
+<!-- High-Density Responsive Table Container -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant text-label-xs font-label-xs text-on-surface-variant uppercase tracking-wider">
+<th class="py-3 px-4 font-semibold" scope="col">PO Number</th>
+<th class="py-3 px-4 font-semibold" scope="col">SKU / Item</th>
+<th class="py-3 px-4 font-semibold" scope="col">Vendor Name</th>
+<th class="py-3 px-4 font-semibold text-right" scope="col">Qty Ordered</th>
+<th class="py-3 px-4 font-semibold text-right" scope="col">Confirmed Qty</th>
+<th class="py-3 px-4 font-semibold text-right" scope="col">Total Value</th>
+<th class="py-3 px-4 font-semibold" scope="col">Status</th>
+<th class="py-3 px-4 font-semibold text-right" scope="col">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/50 text-body-sm font-body-sm">
+<!-- Row 1: Shortfall Row (Highlighted) -->
+<tr class="bg-surface-container-low/50 hover:bg-surface-container-low transition-colors group">
+<td class="py-3 px-4 font-code-md text-code-md font-semibold text-primary flex items-center space-x-1.5">
+<span class="material-symbols-outlined text-primary" data-icon="flag" style="font-size: 16px;">flag</span>
+<span class="">PO-2026-0890</span>
+</td>
+<td class="py-3 px-4">
+<div class="font-code-md text-code-md text-on-surface font-medium">SKU-3301</div>
+<div class="text-label-xs font-label-xs text-on-surface-variant">Organic Whole Milk 1gal</div>
+</td>
+<td class="py-3 px-4">
+<div class="font-medium text-on-surface">Daily Dairy Co.</div>
+<div class="text-label-xs font-label-xs text-on-surface-variant">SLA: 98.2% · EDI 855</div>
+</td>
+<td class="py-3 px-4 text-right font-code-md text-code-md text-on-surface font-medium">
+                500
+              </td>
+<td class="py-3 px-4 text-right">
+<div class="flex items-center justify-end space-x-1.5">
+<span class="font-code-md text-code-md font-semibold text-on-surface">250</span>
+<span class="px-2 py-0.5 rounded-full bg-error-container text-on-error-container text-label-xs font-label-xs font-bold uppercase border border-outline-variant">
+                    Shortfall -250
+                  </span>
+</div>
+</td>
+<td class="py-3 px-4 text-right font-code-md text-code-md text-on-surface font-semibold">
+                $4,250.00
+              </td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-label-xs font-label-xs font-semibold bg-surface-container-high text-on-surface-variant border border-outline-variant">
+<span class="w-1.5 h-1.5 rounded-full bg-primary mr-1.5"></span>
+                  Partial
+                </span>
+</td>
+<td class="py-3 px-4 text-right">
+<div class="flex items-center justify-end space-x-2">
+<button class="px-2.5 py-1 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low text-body-sm font-body-sm font-medium transition-colors shadow-sm">
+                    View PO
+                  </button>
+<button class="px-3 py-1 rounded-lg bg-primary text-on-primary hover:bg-surface-tint text-body-sm font-body-sm font-semibold flex items-center space-x-1 shadow-sm transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined" data-icon="auto_mode" style="font-size: 16px;">auto_mode</span>
+<span class="">Re-plan Agent</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2: Confirmed -->
+<tr class="hover:bg-surface-container-low/40 transition-colors">
+<td class="py-3 px-4 font-code-md text-code-md font-medium text-on-surface">
+                PO-2026-0891
+              </td>
+<td class="py-3 px-4">
+<div class="font-code-md text-code-md text-on-surface font-medium">SKU-7740</div>
+<div class="text-label-xs font-label-xs text-on-surface-variant">Hass Avocados (Case of 24)</div>
+</td>
+<td class="py-3 px-4">
+<div class="font-medium text-on-surface">Andean Fresh Farms</div>
+<div class="text-label-xs font-label-xs text-on-surface-variant">SLA: 99.4% · EDI 850</div>
+</td>
+<td class="py-3 px-4 text-right font-code-md text-code-md text-on-surface font-medium">
+                800
+              </td>
+<td class="py-3 px-4 text-right font-code-md text-code-md text-on-surface font-medium">
+                800
+              </td>
+<td class="py-3 px-4 text-right font-code-md text-code-md text-on-surface font-semibold">
+                $5,440.00
+              </td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-label-xs font-label-xs font-semibold bg-tertiary-fixed text-on-tertiary-fixed border border-tertiary-fixed-dim">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary mr-1.5"></span>
+                  Confirmed
+                </span>
+</td>
+<td class="py-3 px-4 text-right">
+<button class="px-2.5 py-1 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low text-body-sm font-body-sm font-medium transition-colors">
+                  View PO
+                </button>
+</td>
+</tr>
+<!-- Row 3: Confirmed Small Batch -->
+<tr class="hover:bg-surface-container-low/40 transition-colors">
+<td class="py-3 px-4 font-code-md text-code-md font-medium text-on-surface">
+                PO-2026-0888
+              </td>
+<td class="py-3 px-4">
+<div class="font-code-md text-code-md text-on-surface font-medium">SKU-1042</div>
+<div class="text-label-xs font-label-xs text-on-surface-variant">Cold Brew Espresso Roast 12oz</div>
+</td>
+<td class="py-3 px-4">
+<div class="font-medium text-on-surface">Pacific Roasters</div>
+<div class="text-label-xs font-label-xs text-on-surface-variant">SLA: 96.8% · Portal ACK</div>
+</td>
+<td class="py-3 px-4 text-right font-code-md text-code-md text-on-surface font-medium">
+                250
+              </td>
+<td class="py-3 px-4 text-right font-code-md text-code-md text-on-surface font-medium">
+                250
+              </td>
+<td class="py-3 px-4 text-right font-code-md text-code-md text-on-surface font-semibold">
+                $362.50
+              </td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-label-xs font-label-xs font-semibold bg-tertiary-fixed text-on-tertiary-fixed border border-tertiary-fixed-dim">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary mr-1.5"></span>
+                  Confirmed
+                </span>
+</td>
+<td class="py-3 px-4 text-right">
+<button class="px-2.5 py-1 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low text-body-sm font-body-sm font-medium transition-colors">
+                  View PO
+                </button>
+</td>
+</tr>
+<!-- Row 4: Open Order -->
+<tr class="hover:bg-surface-container-low/40 transition-colors">
+<td class="py-3 px-4 font-code-md text-code-md font-medium text-on-surface">
+                PO-2026-0885
+              </td>
+<td class="py-3 px-4">
+<div class="font-code-md text-code-md text-on-surface font-medium">SKU-9021</div>
+<div class="text-label-xs font-label-xs text-on-surface-variant">Sparkling Spring Mineral 500ml (24pk)</div>
+</td>
+<td class="py-3 px-4">
+<div class="font-medium text-on-surface">Global Beverages Ltd</div>
+<div class="text-label-xs font-label-xs text-on-surface-variant">SLA: 97.9% · Dispatch Queued</div>
+</td>
+<td class="py-3 px-4 text-right font-code-md text-code-md text-on-surface font-medium">
+                1,200
+              </td>
+<td class="py-3 px-4 text-right font-code-md text-code-md text-on-surface-variant">
+                1,200 (Pending)
+              </td>
+<td class="py-3 px-4 text-right font-code-md text-code-md text-on-surface font-semibold">
+                $14,400.00
+              </td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-label-xs font-label-xs font-semibold bg-secondary-fixed text-on-secondary-fixed border border-secondary-fixed-dim">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary mr-1.5 animate-ping"></span>
+                  Open
+                </span>
+</td>
+<td class="py-3 px-4 text-right">
+<button class="px-2.5 py-1 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low text-body-sm font-body-sm font-medium transition-colors">
+                  View PO
+                </button>
+</td>
+</tr>
+<!-- Row 5: Cancelled Sample Item -->
+<tr class="hover:bg-surface-container-low/40 transition-colors opacity-75">
+<td class="py-3 px-4 font-code-md text-code-md font-medium text-on-surface-variant line-through">
+                PO-2026-0882
+              </td>
+<td class="py-3 px-4">
+<div class="font-code-md text-code-md text-on-surface-variant">SKU-4412</div>
+<div class="text-label-xs font-label-xs text-on-surface-variant">Artisan Sourdough Loaf 400g</div>
+</td>
+<td class="py-3 px-4">
+<div class="font-medium text-on-surface-variant">Bakery Heritage Group</div>
+<div class="text-label-xs font-label-xs text-on-surface-variant">OOS Notified</div>
+</td>
+<td class="py-3 px-4 text-right font-code-md text-code-md text-on-surface-variant">
+                300
+              </td>
+<td class="py-3 px-4 text-right font-code-md text-code-md text-on-surface-variant">
+                0
+              </td>
+<td class="py-3 px-4 text-right font-code-md text-code-md text-on-surface-variant font-medium">
+                $1,050.00
+              </td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-label-xs font-label-xs font-medium bg-surface-container-low text-on-surface-variant border border-outline-variant">
+                  Cancelled
+                </span>
+</td>
+<td class="py-3 px-4 text-right">
+<button class="px-2.5 py-1 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low text-body-sm font-body-sm font-medium transition-colors">
+                  Audit Log
+                </button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Footer / Pagination Controls -->
+<div class="p-4 border-t border-outline-variant bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-3 text-body-sm font-body-sm text-on-surface-variant">
+<div class="flex items-center space-x-2">
+<span class="">Showing <strong class="text-on-surface">5</strong> of <strong class="text-on-surface">12</strong> active purchase orders</span>
+<span class="text-outline-variant">|</span>
+<span class="text-label-xs font-label-xs">Auto-synced with EDI 850 gateway</span>
+</div>
+<div class="flex items-center space-x-2">
+<button class="px-3 py-1 rounded-lg border border-outline-variant bg-surface-container-lowest disabled:opacity-50 text-on-surface font-medium hover:bg-surface-container transition-colors" disabled="">
+            Previous
+          </button>
+<span class="px-2 py-1 text-label-xs font-label-xs font-bold text-on-surface">Page 1 of 3</span>
+<button class="px-3 py-1 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface font-medium hover:bg-surface-container transition-colors">
+            Next
+          </button>
+</div>
+</div>
+</div>
+<!-- Agent Workflow & Autonomous Shortfall Resolution Pane -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+<!-- Left Panel: Reasoned Decision Blueprint (7 cols) -->
+<div class="lg:col-span-7 bg-surface-container-lowest border border-outline-variant rounded-xl p-5 shadow-sm space-y-4">
+<div class="flex items-center justify-between border-b border-outline-variant pb-3">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-primary" data-icon="account_tree" style="font-size: 20px;">account_tree</span>
+<h3 class="text-title-md font-title-md text-on-surface font-semibold">Autonomous Shortfall Mitigation Plan</h3>
+</div>
+<span class="text-label-xs font-label-xs bg-surface-container-high text-on-surface-variant px-2.5 py-0.5 rounded-full font-medium">Step 3 of 4: Vendor Allocation</span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant leading-relaxed">
+          Daily Dairy Co. reported a production outage affecting SKU-3301. To prevent dark store stockout across 14 hub locations before morning replenishment (06:00 UTC), the agent has synthesized the secondary supplier matrix:
+        </p>
+<!-- Secondary Source Comparison Bento -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+<!-- Selected Recommended Fallback -->
+<div class="p-3.5 rounded-xl border-2 border-primary bg-surface-container-low/40 relative">
+<div class="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-primary-container text-on-primary text-label-xs font-label-xs font-bold uppercase">
+              Agent Optimal
+            </div>
+<div class="text-title-md font-title-md text-on-surface font-semibold">Valley Farms Organics</div>
+<div class="text-label-xs font-label-xs text-on-surface-variant mt-0.5">Supplier Tier: Secondary Verified (EDI 855)</div>
+<div class="mt-3 space-y-1.5 text-body-sm font-body-sm">
+<div class="flex justify-between">
+<span class="text-on-surface-variant">Unit Price:</span>
+<span class="font-code-md text-code-md font-semibold text-on-surface">$8.60 / unit (+$0.10)</span>
+</div>
+<div class="flex justify-between">
+<span class="text-on-surface-variant">Available Capacity:</span>
+<span class="font-code-md text-code-md font-semibold text-tertiary">350 units ready</span>
+</div>
+<div class="flex justify-between">
+<span class="text-on-surface-variant">Lead Time:</span>
+<span class="font-code-md text-code-md font-semibold text-on-surface">3.5 hrs (Hub delivery)</span>
+</div>
+</div>
+<div class="mt-3 pt-2.5 border-t border-outline-variant flex items-center justify-between">
+<span class="text-label-xs font-label-xs text-on-surface-variant">Confidence Score: <strong class="text-tertiary">98.6%</strong></span>
+<button class="px-2.5 py-1 rounded bg-primary text-on-primary text-label-xs font-label-xs font-semibold hover:bg-surface-tint transition-all">
+                Split PO (250u)
+              </button>
+</div>
+</div>
+<!-- Alternative Option -->
+<div class="p-3.5 rounded-xl border border-outline-variant bg-surface-container-lowest">
+<div class="text-title-md font-title-md text-on-surface font-semibold">Alpine Beverage Group</div>
+<div class="text-label-xs font-label-xs text-on-surface-variant mt-0.5">Supplier Tier: Tertiary Spot Market</div>
+<div class="mt-3 space-y-1.5 text-body-sm font-body-sm">
+<div class="flex justify-between">
+<span class="text-on-surface-variant">Unit Price:</span>
+<span class="font-code-md text-code-md text-on-surface-variant">$8.95 / unit (+$0.45)</span>
+</div>
+<div class="flex justify-between">
+<span class="text-on-surface-variant">Available Capacity:</span>
+<span class="font-code-md text-code-md text-on-surface font-medium">500 units</span>
+</div>
+<div class="flex justify-between">
+<span class="text-on-surface-variant">Lead Time:</span>
+<span class="font-code-md text-code-md text-on-surface-variant">7.0 hrs (Late delivery)</span>
+</div>
+</div>
+<div class="mt-3 pt-2.5 border-t border-outline-variant flex items-center justify-between">
+<span class="text-label-xs font-label-xs text-on-surface-variant">Risk: <strong class="text-error">Stockout Window</strong></span>
+<button class="px-2.5 py-1 rounded border border-outline-variant text-on-surface-variant text-label-xs font-label-xs font-medium hover:bg-surface-container-low transition-colors">
+                Inspect
+              </button>
+</div>
+</div>
+</div>
+<div class="p-3 rounded-lg bg-surface-container-low border border-outline-variant flex items-center justify-between text-body-sm font-body-sm">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-secondary" data-icon="lightbulb" style="font-size: 18px;">lightbulb</span>
+<span class="">Est. Gross Margin Impact: <strong class="text-on-surface">-$25.00 total</strong> across dark store network</span>
+</div>
+<a class="text-primary hover:underline text-label-xs font-label-xs font-bold uppercase" href="#">View full simulation →</a>
+</div>
+</div>
+<!-- Right Panel: Agent Execution Stream & Logs (5 cols) -->
+<div class="lg:col-span-5 bg-surface-container-lowest border border-outline-variant rounded-xl p-5 shadow-sm space-y-4">
+<div class="flex items-center justify-between border-b border-outline-variant pb-3">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-secondary" data-icon="terminal" style="font-size: 20px;">terminal</span>
+<h3 class="text-title-md font-title-md text-on-surface font-semibold">Agent Activity Audit Trail</h3>
+</div>
+<span class="text-code-sm font-code-sm text-on-surface-variant">T: 14:32:08 UTC</span>
+</div>
+<!-- Vertical Reasoning Timeline -->
+<div class="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-outline-variant">
+<!-- Step 1: Completed -->
+<div class="relative">
+<div class="absolute -left-6 top-0.5 w-4 h-4 rounded-full bg-tertiary flex items-center justify-center text-on-tertiary">
+<span class="material-symbols-outlined" data-icon="check" style="font-size: 12px;">check</span>
+</div>
+<div>
+<div class="flex items-center justify-between">
+<span class="font-semibold text-on-surface text-body-sm font-body-sm">EDI 855 Ingestion</span>
+<span class="text-code-sm font-code-sm text-on-surface-variant">14:30:12</span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-0.5">Parsed Daily Dairy Co. acknowledgment confirming 250 of 500 units.</p>
+<div class="mt-1.5 inline-block font-code-sm text-code-sm bg-surface-container-low px-2 py-0.5 rounded text-on-surface-variant border border-outline-variant">
+                tool: edi_parser.parse_855(PO_0890)
+              </div>
+</div>
+</div>
+<!-- Step 2: Completed -->
+<div class="relative">
+<div class="absolute -left-6 top-0.5 w-4 h-4 rounded-full bg-tertiary flex items-center justify-center text-on-tertiary">
+<span class="material-symbols-outlined" data-icon="check" style="font-size: 12px;">check</span>
+</div>
+<div>
+<div class="flex items-center justify-between">
+<span class="font-semibold text-on-surface text-body-sm font-body-sm">Inventory Buffer Impact</span>
+<span class="text-code-sm font-code-sm text-on-surface-variant">14:30:19</span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-0.5">Forecast models alert out-of-stock risk at 07:15 UTC without intervention.</p>
+<div class="mt-1.5 inline-block font-code-sm text-code-sm bg-surface-container-low px-2 py-0.5 rounded text-on-surface-variant border border-outline-variant">
+                run: demand_projection(SKU_3301, window='24h')
+              </div>
+</div>
+</div>
+<!-- Step 3: Current Human-in-the-Loop decision -->
+<div class="relative">
+<div class="absolute -left-6 top-0.5 w-4 h-4 rounded-full bg-primary-container ring-4 ring-error-container"></div>
+<div>
+<div class="flex items-center justify-between">
+<span class="font-semibold text-primary text-body-sm font-body-sm">Awaiting Category Manager Sign-off</span>
+<span class="text-code-sm font-code-sm text-primary font-bold">ACTIVE</span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface mt-0.5">
+                Targeting Valley Farms for remainder (250 units @ $8.60). Human validation required before dispatching emergency EDI 850.
+              </p>
+<div class="mt-2 flex space-x-2">
+<button class="px-3 py-1 bg-primary text-on-primary rounded text-label-xs font-label-xs font-semibold shadow-sm hover:bg-surface-tint transition-all">
+                  Approve Dispatch
+                </button>
+<button class="px-3 py-1 border border-outline-variant bg-surface-container-lowest rounded text-label-xs font-label-xs font-medium text-on-surface-variant hover:bg-surface-container-low transition-colors">
+                  Adjust Volume
+                </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Global Footer status -->
+<footer class="bg-surface-container-lowest border-t border-outline-variant py-3 px-6 text-label-xs font-label-xs text-on-surface-variant">
+<div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+<div class="flex items-center space-x-2">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="">EDI Gateway Connected: All systems operational</span>
+<span class="text-outline-variant">|</span>
+<span class="">Version: 3.4.2-enterprise</span>
+</div>
+<div>
+<span class="">BuyIt © 2026 Procurement Robotics Inc.</span>
+</div>
+</div>
+</footer>
+
+
+</body></html>

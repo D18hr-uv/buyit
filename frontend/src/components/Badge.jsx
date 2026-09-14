@@ -1,29 +1,42 @@
+import { Icon } from "./Icon.jsx";
+
+/** Criteria check pill — pass = green (tertiary), fail = red (error). */
 export function Badge({ ok, children }) {
   return (
     <span
       className={
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium " +
+        "inline-flex items-center gap-1 rounded-md px-2 py-1 text-label-xs font-label-xs font-medium " +
         (ok
-          ? "bg-emerald-100 text-emerald-700"
-          : "bg-rose-100 text-rose-700")
+          ? "bg-tertiary-fixed text-on-tertiary-fixed"
+          : "bg-error-container text-on-error-container")
       }
     >
-      <span className={ok ? "text-emerald-600" : "text-rose-600"}>{ok ? "✓" : "✕"}</span>
+      <Icon name={ok ? "check" : "close"} className="text-[14px]" />
       {children}
     </span>
   );
 }
 
-export function Pill({ tone = "gray", children }) {
+/**
+ * Status pill. Tone keys are kept stable so existing callers don't change.
+ * Optional `icon` renders a leading Material Symbol.
+ */
+export function Pill({ tone = "gray", icon, children }) {
   const tones = {
-    gray: "bg-gray-100 text-gray-700",
-    coral: "bg-[#fde7e3] text-[#c23b28]",
-    blue: "bg-blue-100 text-blue-700",
-    amber: "bg-amber-100 text-amber-800",
-    green: "bg-emerald-100 text-emerald-700",
+    gray: "bg-surface-container text-on-surface-variant border border-outline-variant",
+    coral: "bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA]",
+    blue: "bg-[#F0F9FF] text-[#075985] border border-[#BAE6FD]",
+    amber: "bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A]",
+    orange: "bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A]",
+    green: "bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]",
   };
   return (
-    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${tones[tone]}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-label-xs font-label-xs font-semibold ${
+        tones[tone] || tones.gray
+      }`}
+    >
+      {icon && <Icon name={icon} className="text-[14px]" />}
       {children}
     </span>
   );

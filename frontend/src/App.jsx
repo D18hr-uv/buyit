@@ -5,8 +5,12 @@ import { DecisionCard } from "./components/DecisionCard.jsx";
 import { ApprovalPanel } from "./components/ApprovalPanel.jsx";
 import { POTable } from "./components/POTable.jsx";
 import { DataTable } from "./components/DataTable.jsx";
+import { LogsTable } from "./components/LogsTable.jsx";
 import { EvalPanel } from "./components/EvalPanel.jsx";
+import { CreatePOForm } from "./components/CreatePOForm.jsx";
+import { CreateOrderForm } from "./components/CreateOrderForm.jsx";
 import { Pill } from "./components/Badge.jsx";
+import { Icon } from "./components/Icon.jsx";
 
 const TABS = [
   ["agent", "Agent"],
@@ -17,18 +21,37 @@ const TABS = [
   ["eval", "Evaluation"],
 ];
 
+const ORDER_STATUS_TONE = {
+  open: "blue",
+  fulfilled: "green",
+  confirmed: "green",
+  partial: "amber",
+  cancelled: "gray",
+  pending: "amber",
+};
+
 export default function App() {
   const [presets, setPresets] = useState([]);
   const [health, setHealth] = useState(null);
   const [run, setRun] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [activePreset, setActivePreset] = useState(null);
   const [tab, setTab] = useState("agent");
   const [data, setData] = useState({});
   const [error, setError] = useState(null);
+  const [skus, setSkus] = useState([]);
+  const [vendorList, setVendorList] = useState([]);
+  const [creating, setCreating] = useState(null); // "po" | "order" | null
+  const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
     api.scenarios().then((d) => setPresets(d.presets)).catch((e) => setError(String(e)));
     api.health().then(setHealth).catch(() => {});
+    // Reference data for the create-record forms (SKUs + vendors).
+    api.inventory()
+      .then((d) => setSkus(d.inventory.map((r) => ({ sku: r.sku, name: r.name }))))
+      .catch(() => {});
+    api.vendors().then((d) => setVendorList(d.vendors)).catch(() => {});
   }, []);
 
   // Fetch data for the active data-tab.
@@ -52,10 +75,15 @@ export default function App() {
         setError(String(e));
       }
     })();
-  }, [tab, run]);
+  }, [tab, run, refreshTick]);
+
+  function onRecordCreated() {
+    setCreating(null);
+    setRefreshTick((t) => t + 1);
+  }
 
   async function launch(preset) {
-    setBusy(true); setError(null); setRun(null);
+    setBusy(true); setError(null); setRun(null); setActivePreset(preset.id);
     try {
       setRun(await api.startRun(preset.scenario, preset.situation));
     } catch (e) { setError(String(e)); } finally { setBusy(false); }
@@ -70,116 +98,389 @@ export default function App() {
 
   async function resetDemo() {
     setBusy(true);
-    try { await api.reset(); setRun(null); setData({}); } finally { setBusy(false); }
+    try { await api.reset(); setRun(null); setData({}); setActivePreset(null); }
+    finally { setBusy(false); }
   }
 
+  const inv = data.inventory || [];
+  const belowReorder = inv.filter((r) => r.on_hand < r.reorder_point).length;
+  const invValue = inv.reduce((sum, r) => sum + (r.on_hand || 0) * (r.unit_cost || 0), 0);
+
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6">
-      <header className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            <span className="text-[#f0503c]">AI</span> Purchasing Agent
-          </h1>
-          <p className="text-sm text-gray-500">
-            Inventory management with an agent that investigates → decides → acts → validates.
-          </p>
+    <div className="flex min-h-screen flex-col bg-background text-on-surface antialiased">
+      {/* TOP APP BAR */}
+      <header className="sticky top-0 z-50 flex h-16 w-full items-center justify-between border-b border-outline-variant bg-surface px-6 shadow-sm">
+        <div className="flex items-center gap-8">
+          <span className="flex items-center gap-1.5 text-headline-sm font-headline-sm font-bold tracking-tight text-on-surface">
+            Buy<span className="text-[#F0503C]">It</span>
+          </span>
+          <nav className="hidden items-center gap-1 md:flex">
+            {TABS.map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                className={
+                  "rounded-lg px-3 py-1.5 text-title-md font-title-md transition-colors " +
+                  (tab === id
+                    ? "bg-[#F0503C]/10 text-[#F0503C] font-semibold"
+                    : "text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface")
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
         </div>
-        <div className="flex items-center gap-2">
-          {health && <Pill tone={health.llm === "openai" ? "green" : "gray"}>LLM: {health.llm}</Pill>}
-          <button onClick={resetDemo} disabled={busy}
-            className="rounded-lg bg-white px-3 py-1 text-xs font-medium text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50 disabled:opacity-50">
+
+        <div className="flex items-center gap-3">
+          {health && (
+            <div
+              className={
+                "hidden items-center gap-1.5 rounded-full border px-2.5 py-1 font-code-sm text-code-sm sm:flex " +
+                (health.llm === "openai"
+                  ? "border-tertiary-container/30 bg-tertiary-container/10 text-tertiary"
+                  : "border-outline-variant bg-surface-container text-on-surface-variant")
+              }
+            >
+              <span
+                className={
+                  "h-2 w-2 rounded-full " +
+                  (health.llm === "openai" ? "animate-pulse bg-tertiary" : "bg-outline")
+                }
+              />
+              LLM: {health.llm}
+            </div>
+          )}
+          <button
+            onClick={resetDemo}
+            disabled={busy}
+            className="hidden items-center gap-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-1.5 text-body-sm font-body-sm text-on-surface transition-all hover:bg-surface-container-low active:scale-[0.98] disabled:opacity-50 lg:flex"
+          >
+            <Icon name="refresh" className="text-[16px]" />
             Reset demo data
           </button>
+          <div className="flex items-center gap-1">
+            <button
+              className="relative rounded-lg p-2 text-on-surface-variant transition-colors hover:bg-surface-container-low"
+              title="Notifications"
+            >
+              <Icon name="notifications" className="text-[20px]" />
+              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary ring-2 ring-surface" />
+            </button>
+            <button
+              className="rounded-lg p-2 text-on-surface-variant transition-colors hover:bg-surface-container-low"
+              title="Settings"
+            >
+              <Icon name="settings" className="text-[20px]" />
+            </button>
+          </div>
+          <div className="ml-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary-fixed text-title-md font-title-md font-bold text-on-primary-fixed">
+            CM
+          </div>
         </div>
       </header>
 
-      <nav className="mb-5 flex flex-wrap gap-2">
+      {/* MOBILE NAV (top bar nav is hidden below md) */}
+      <nav className="flex gap-1 overflow-x-auto border-b border-outline-variant bg-surface px-3 py-2 md:hidden">
         {TABS.map(([id, label]) => (
-          <button key={id} onClick={() => setTab(id)}
-            className={"rounded-lg px-3 py-1.5 text-sm font-medium " +
-              (tab === id ? "bg-[#f0503c] text-white" : "bg-white text-gray-600 ring-1 ring-gray-200")}>
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={
+              "shrink-0 rounded-lg px-3 py-1.5 text-body-sm font-title-md transition-colors " +
+              (tab === id
+                ? "bg-[#F0503C]/10 text-[#F0503C] font-semibold"
+                : "text-on-surface-variant hover:bg-surface-container-low")
+            }
+          >
             {label}
           </button>
         ))}
       </nav>
 
-      {error && <div className="mb-4 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}
-
-      {tab === "agent" && (
-        <div className="grid gap-5 md:grid-cols-[300px_1fr]">
-          <section>
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Scenarios</h2>
-            <div className="space-y-2">
-              {presets.map((p) => (
-                <button key={p.id} onClick={() => launch(p)} disabled={busy}
-                  className="w-full rounded-xl border border-gray-200 bg-white p-3 text-left hover:border-[#f0503c] disabled:opacity-50">
-                  <div className="text-sm font-semibold text-gray-800">{p.label}</div>
-                  <div className="mt-0.5 text-xs text-gray-500">{p.expectation}</div>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="space-y-4">
-            {busy && !run && (
-              <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
-                Agent is investigating…
-              </div>
-            )}
-            {!run && !busy && (
-              <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500">
-                Pick a scenario to run the agent.
-              </div>
-            )}
-            {run && (
-              <>
-                <DecisionCard run={run} />
-                {run.status === "awaiting_approval" && (
-                  <ApprovalPanel run={run} busy={busy}
-                    onApprove={(qty) => decideApproval(true, qty)}
-                    onReject={() => decideApproval(false)} />
-                )}
-                <div className="rounded-xl border border-gray-200 bg-white p-4">
-                  <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-                    Reasoning timeline
-                  </h3>
-                  <Timeline trace={run.trace} />
-                </div>
-              </>
-            )}
-          </section>
+      {/* RUNTIME SUB-HEADER */}
+      <section className="hidden items-center justify-between border-b border-outline-variant bg-surface-container-lowest px-6 py-2.5 sm:flex">
+        <div className="flex items-center gap-3">
+          <span className="text-label-xs font-label-xs text-on-surface-variant">
+            ACTIVE AGENT RUNTIME:
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded border border-surface-container-highest bg-surface-container px-2 py-0.5 font-code-sm text-code-sm text-on-surface">
+            procurement-daemon-v4.2.1-prod
+          </span>
+          <span className="hidden font-body-sm text-body-sm text-on-surface-variant sm:inline">
+            · Target: Quick-Commerce DC-East Hub
+          </span>
         </div>
+        <div className="hidden items-center gap-2 md:flex">
+          <span className="text-label-xs font-label-xs text-on-surface-variant">
+            CONFIDENCE THRESHOLD:
+          </span>
+          <span className="font-code-sm text-code-sm font-semibold text-on-surface">&gt; 92.0%</span>
+        </div>
+      </section>
+
+      {/* MAIN */}
+      <main
+        className={
+          "mx-auto w-full flex-1 p-6 " +
+          (tab === "agent" ? "max-w-[1600px]" : "max-w-7xl")
+        }
+      >
+        {error && (
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-error-container bg-error-container px-3 py-2 text-body-sm text-on-error-container">
+            <Icon name="error" className="text-[18px]" />
+            {error}
+          </div>
+        )}
+
+        {tab === "agent" && (
+          <div className="flex flex-col gap-6 md:flex-row">
+            {/* Scenarios aside */}
+            <aside className="flex w-full shrink-0 flex-col gap-4 md:w-[320px]">
+              <div className="flex items-center justify-between px-1">
+                <h2 className="text-label-xs font-label-xs uppercase tracking-wider text-on-surface-variant">
+                  Scenarios
+                </h2>
+                <span className="rounded-full bg-surface-container px-2 py-0.5 font-code-sm text-code-sm text-on-surface-variant">
+                  {presets.length} Presets
+                </span>
+              </div>
+              <div className="flex flex-col gap-2.5">
+                {presets.map((p) => {
+                  const active = activePreset === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => launch(p)}
+                      disabled={busy}
+                      className={
+                        "group relative rounded-xl p-3.5 text-left transition-all disabled:opacity-50 " +
+                        (active
+                          ? "border-2 border-primary/70 bg-gradient-to-r from-primary/5 via-surface-container-lowest to-surface-container-lowest shadow-sm"
+                          : "border border-outline-variant bg-surface-container-lowest hover:border-outline hover:bg-surface-container-low")
+                      }
+                    >
+                      <div className="mb-1 flex items-start justify-between gap-2">
+                        <h3 className="flex items-center gap-1.5 text-body-sm font-title-md font-semibold text-on-surface">
+                          {active && (
+                            <span className="inline-block h-2 w-2 rounded-full bg-primary" />
+                          )}
+                          {p.label}
+                        </h3>
+                      </div>
+                      <p className="text-body-sm font-body-sm text-on-surface-variant">
+                        {p.expectation}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </aside>
+
+            {/* Workspace */}
+            <section className="flex flex-1 flex-col gap-6">
+              {busy && !run && (
+                <div className="flex items-center justify-center gap-2 rounded-xl border border-outline-variant bg-surface-container-lowest p-6 text-body-sm text-on-surface-variant shadow-sm">
+                  <Icon name="progress_activity" className="animate-spin text-[18px] text-primary" />
+                  Agent is investigating…
+                </div>
+              )}
+              {!run && !busy && (
+                <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-10 text-center text-body-sm text-on-surface-variant">
+                  <Icon name="smart_toy" className="text-[32px] text-outline" />
+                  Pick a scenario to run the agent.
+                </div>
+              )}
+              {run && (
+                <>
+                  <DecisionCard run={run} />
+                  {run.status === "awaiting_approval" && (
+                    <ApprovalPanel
+                      run={run}
+                      busy={busy}
+                      onApprove={(qty) => decideApproval(true, qty)}
+                      onReject={() => decideApproval(false)}
+                    />
+                  )}
+                  <article className="flex flex-col gap-6 rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm md:p-6">
+                    <div className="flex items-center gap-2.5 border-b border-outline-variant/60 pb-3">
+                      <Icon name="timeline" className="text-[22px] text-primary" />
+                      <h3 className="text-headline-sm font-headline-sm text-on-surface">
+                        Agent Reasoning &amp; Execution Trace
+                      </h3>
+                    </div>
+                    <Timeline trace={run.trace} />
+                  </article>
+                </>
+              )}
+            </section>
+          </div>
+        )}
+
+        {tab === "inventory" && (
+          <DataTable
+            title="Inventory Management"
+            badge="LIVE SYNC"
+            subtitle="Real-time warehouse counts, safety buffers, and agent replenishment thresholds."
+            stats={[
+              { label: "Total SKUs", value: inv.length, icon: "inventory_2" },
+              {
+                label: "Below Reorder Pt",
+                value: belowReorder,
+                tone: "primary",
+                icon: "warning",
+              },
+              {
+                label: "Total Inventory Value",
+                value: `$${Math.round(invValue).toLocaleString()}`,
+                icon: "payments",
+              },
+            ]}
+            rows={inv}
+            columns={[
+              {
+                key: "sku",
+                label: "SKU",
+                mono: true,
+                fmt: (v) => <span className="font-semibold text-secondary">{v}</span>,
+              },
+              { key: "name", label: "Product" },
+              {
+                key: "category",
+                label: "Category",
+                fmt: (v) => (
+                  <span className="rounded-full bg-surface-container px-2.5 py-0.5 text-label-xs font-label-xs text-on-secondary-container">
+                    {v}
+                  </span>
+                ),
+              },
+              { key: "on_hand", label: "On hand", align: "right", mono: true },
+              { key: "safety_stock", label: "Safety", align: "right", mono: true },
+              { key: "reorder_point", label: "Reorder pt", align: "right", mono: true },
+              {
+                key: "unit_cost",
+                label: "Unit cost",
+                align: "right",
+                mono: true,
+                fmt: (v) => `$${v}`,
+              },
+              {
+                key: "_status",
+                label: "Stock Status",
+                align: "center",
+                fmt: (_, row) => {
+                  const low = row.on_hand < row.reorder_point;
+                  return (
+                    <span
+                      className={
+                        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-label-xs font-label-xs font-semibold " +
+                        (low
+                          ? "border-red-200 bg-red-50 text-red-700"
+                          : "border-emerald-200 bg-emerald-50 text-emerald-800")
+                      }
+                    >
+                      <span
+                        className={
+                          "h-1.5 w-1.5 rounded-full " +
+                          (low ? "animate-pulse bg-red-500" : "bg-emerald-500")
+                        }
+                      />
+                      {low ? "Low Stock" : "In Stock"}
+                    </span>
+                  );
+                },
+              },
+            ]}
+          />
+        )}
+
+        {tab === "pos" && (
+          <POTable
+            pos={data.pos}
+            action={
+              <button
+                onClick={() => setCreating("po")}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-title-md font-title-md text-on-primary shadow-sm transition-all hover:bg-primary-container active:scale-[0.98]"
+              >
+                <Icon name="add" className="text-[18px]" />
+                New PO
+              </button>
+            }
+          />
+        )}
+
+        {tab === "orders" && (
+          <DataTable
+            title="Client Orders"
+            subtitle="Demand signals from downstream clients driving replenishment needs."
+            headerAction={
+              <button
+                onClick={() => setCreating("order")}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-title-md font-title-md text-on-primary shadow-sm transition-all hover:bg-primary-container active:scale-[0.98]"
+              >
+                <Icon name="add" className="text-[18px]" />
+                New order
+              </button>
+            }
+            rows={data.orders}
+            empty="No client orders."
+            columns={[
+              { key: "order_id", label: "Order", mono: true },
+              {
+                key: "sku",
+                label: "SKU",
+                mono: true,
+                fmt: (v) => <span className="font-semibold text-secondary">{v}</span>,
+              },
+              { key: "qty", label: "Qty", align: "right", mono: true },
+              {
+                key: "status",
+                label: "Status",
+                align: "center",
+                fmt: (v) => <Pill tone={ORDER_STATUS_TONE[v] || "gray"}>{v}</Pill>,
+              },
+              {
+                key: "created_at",
+                label: "Date",
+                fmt: (v) => new Date(v).toLocaleDateString(),
+              },
+            ]}
+          />
+        )}
+
+        {tab === "logs" && <LogsTable rows={data.logs} />}
+
+        {tab === "eval" && <EvalPanel />}
+      </main>
+
+      {creating === "po" && (
+        <CreatePOForm
+          skus={skus}
+          vendors={vendorList}
+          onClose={() => setCreating(null)}
+          onCreated={onRecordCreated}
+        />
+      )}
+      {creating === "order" && (
+        <CreateOrderForm
+          skus={skus}
+          onClose={() => setCreating(null)}
+          onCreated={onRecordCreated}
+        />
       )}
 
-      {tab === "inventory" && (
-        <DataTable rows={data.inventory} columns={[
-          { key: "sku", label: "SKU" }, { key: "name", label: "Product" },
-          { key: "category", label: "Category" }, { key: "on_hand", label: "On hand" },
-          { key: "safety_stock", label: "Safety" }, { key: "reorder_point", label: "Reorder pt" },
-          { key: "unit_cost", label: "Unit cost" },
-        ]} />
-      )}
-
-      {tab === "pos" && <POTable pos={data.pos} />}
-
-      {tab === "orders" && (
-        <DataTable rows={data.orders} columns={[
-          { key: "order_id", label: "Order" }, { key: "sku", label: "SKU" },
-          { key: "qty", label: "Qty" }, { key: "status", label: "Status" },
-          { key: "created_at", label: "Date", fmt: (v) => new Date(v).toLocaleDateString() },
-        ]} empty="No client orders." />
-      )}
-
-      {tab === "logs" && (
-        <DataTable rows={data.logs} columns={[
-          { key: "created_at", label: "When", fmt: (v) => new Date(v).toLocaleString() },
-          { key: "scenario", label: "Scenario" }, { key: "sku", label: "SKU" },
-          { key: "trigger", label: "Trigger" }, { key: "decision_type", label: "Decision" },
-          { key: "status", label: "Status", fmt: (v) => <Pill tone={v === "escalated" ? "coral" : "green"}>{v}</Pill> },
-        ]} empty="No agent runs logged yet — run a scenario on the Agent tab." />
-      )}
-
-      {tab === "eval" && <EvalPanel />}
+      {/* FOOTER */}
+      <footer className="mt-auto flex flex-col items-center justify-between gap-3 border-t border-outline-variant bg-surface-container-lowest px-6 py-3 font-code-sm text-code-sm text-on-surface-variant sm:flex-row">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-tertiary" />
+            Gateway: US-East-1 (Active)
+          </span>
+          <span className="text-outline-variant">·</span>
+          <span>Policy Version: 2026.02-R3</span>
+        </div>
+        <span>BuyIt Decision Command Center</span>
+      </footer>
     </div>
   );
 }

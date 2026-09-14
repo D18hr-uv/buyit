@@ -1,0 +1,703 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>BuyIt - Reorder Logs</title>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Google Fonts: Inter & JetBrains Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-surface": "#131b2e",
+            "surface-tint": "#b52518",
+            "on-primary-fixed-variant": "#920501",
+            "on-background": "#131b2e",
+            "surface-container": "#eaedff",
+            "surface": "#faf8ff",
+            "secondary": "#006398",
+            "on-secondary-container": "#00476e",
+            "on-secondary-fixed": "#001d31",
+            "on-surface-variant": "#5a403c",
+            "surface-container-highest": "#dae2fd",
+            "outline-variant": "#e3beb8",
+            "tertiary-container": "#00855b",
+            "tertiary-fixed-dim": "#4edea3",
+            "on-tertiary-fixed": "#002113",
+            "surface-variant": "#dae2fd",
+            "background": "#faf8ff",
+            "surface-container-low": "#f2f3ff",
+            "tertiary-fixed": "#6ffbbe",
+            "surface-bright": "#faf8ff",
+            "surface-container-lowest": "#ffffff",
+            "secondary-container": "#5bb8fe",
+            "on-error": "#ffffff",
+            "on-tertiary-container": "#f5fff6",
+            "inverse-primary": "#ffb4a8",
+            "on-tertiary": "#ffffff",
+            "on-tertiary-fixed-variant": "#005236",
+            "surface-dim": "#d2d9f4",
+            "on-primary": "#ffffff",
+            "on-primary-container": "#fffbff",
+            "on-primary-fixed": "#410000",
+            "secondary-fixed-dim": "#93ccff",
+            "secondary-fixed": "#cce5ff",
+            "on-secondary": "#ffffff",
+            "error-container": "#ffdad6",
+            "on-error-container": "#93000a",
+            "on-secondary-fixed-variant": "#004b73",
+            "error": "#ba1a1a",
+            "primary": "#b22315",
+            "inverse-on-surface": "#eef0ff",
+            "inverse-surface": "#283044",
+            "outline": "#8f706b",
+            "primary-container": "#d53d2b",
+            "surface-container-high": "#e2e7ff",
+            "tertiary": "#006947",
+            "primary-fixed": "#ffdad4",
+            "primary-fixed-dim": "#ffb4a8"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "margin": "1rem",
+            "space-sm": "0.5rem",
+            "space-md": "1rem",
+            "space-lg": "1.5rem",
+            "space-xs": "0.25rem",
+            "gutter-desktop": "1.5rem",
+            "margin-desktop": "2rem",
+            "gutter": "1rem",
+            "space-xl": "2rem"
+          },
+          "fontFamily": {
+            "label-xs": ["Inter"],
+            "code-md": ["JetBrains Mono"],
+            "headline-sm": ["Inter"],
+            "code-sm": ["JetBrains Mono"],
+            "headline-lg": ["Inter"],
+            "body-md": ["Inter"],
+            "body-sm": ["Inter"],
+            "title-md": ["Inter"],
+            "display-lg": ["Inter"]
+          },
+          "fontSize": {
+            "label-xs": ["11px", {"lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+            "code-md": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+            "headline-sm": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+            "code-sm": ["11px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+            "headline-lg": ["22px", {"lineHeight": "28px", "letterSpacing": "-0.015em", "fontWeight": "600"}],
+            "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+            "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+            "title-md": ["15px", {"lineHeight": "22px", "fontWeight": "600"}],
+            "display-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      display: inline-block;
+      vertical-align: middle;
+      line-height: 1;
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen flex flex-col antialiased selection:bg-primary selection:text-on-primary">
+<!-- TOP APP BAR (Shared Component Execution) -->
+<header class="sticky top-0 z-50 flex items-center justify-between w-full px-6 bg-surface dark:bg-inverse-surface border-b border-outline-variant dark:border-outline shadow-sm dark:shadow-none h-16">
+<div class="flex items-center gap-8">
+<!-- Brand Logo -->
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-on-primary font-bold shadow-sm">
+<span class="material-symbols-outlined text-base">smart_toy</span>
+</div>
+<span class="text-headline-sm font-headline-sm font-bold text-on-surface dark:text-inverse-on-surface tracking-tight">BuyIt</span>
+</div>
+<!-- Navigation Links -->
+<nav class="hidden md:flex items-center gap-6 pt-4">
+<!-- Agent -->
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-inverse-on-surface font-medium pb-4 transition-colors duration-150" href="#">Agent</a>
+<!-- Inventory -->
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-inverse-on-surface font-medium pb-4 transition-colors duration-150" href="#">Inventory</a>
+<!-- Purchase Orders -->
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-inverse-on-surface font-medium pb-4 transition-colors duration-150" href="#">Purchase Orders</a>
+<!-- Client Orders -->
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-inverse-on-surface font-medium pb-4 transition-colors duration-150" href="#">Client Orders</a>
+<!-- Reorder Logs (Active) -->
+<a class="border-b-2 border-primary dark:border-primary-container text-primary dark:text-primary-container font-semibold pb-4" href="#">Reorder Logs</a>
+<!-- Evaluation -->
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-inverse-on-surface font-medium pb-4 transition-colors duration-150" href="#">Evaluation</a>
+</nav>
+</div>
+<!-- Trailing Action Cluster -->
+<div class="flex items-center gap-3">
+<!-- LLM Model Indicator -->
+<div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-low border border-outline-variant/50 text-label-xs font-label-xs text-on-surface-variant">
+<span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>
+<span class="">LLM: openai</span>
+</div>
+<!-- Reset Demo Data Button -->
+<button class="px-3 py-1.5 rounded-lg border border-outline-variant/60 text-body-sm font-body-sm font-medium text-on-surface bg-surface-container-lowest hover:bg-surface-container-low transition-all duration-150 active:scale-[0.98]">
+        Reset demo data
+      </button>
+<!-- Icon Actions -->
+<button class="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-lg transition-colors duration-150" title="Notifications">
+<span class="material-symbols-outlined text-xl">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-lg transition-colors duration-150" title="Settings">
+<span class="material-symbols-outlined text-xl">settings</span>
+</button>
+<!-- Avatar -->
+<div class="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant/50 overflow-hidden flex items-center justify-center text-primary font-bold text-label-xs" title="Enterprise Category Manager avatar">
+        CM
+      </div>
+</div>
+</header>
+<!-- MAIN VIEW CONTAINER -->
+<main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+<!-- PAGE TITLE & SUBTITLE + TIMEFRAME CONTROLS -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div>
+<div class="flex items-center gap-2">
+<h1 class="text-headline-lg font-headline-lg text-on-surface tracking-tight">Reorder Logs</h1>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-label-xs font-label-xs border border-outline-variant/40">Audit Chain v4.2</span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-1">Autonomous procurement telemetry and auditable execution trails with HITL verifiability.</p>
+</div>
+<!-- Action & Filter Pills -->
+<div class="flex flex-wrap items-center gap-2">
+<div class="inline-flex rounded-lg p-1 bg-surface-container-low border border-outline-variant/40">
+<button class="px-3 py-1 text-label-xs font-label-xs rounded-md bg-surface-container-lowest shadow-sm text-on-surface font-semibold">All (142)</button>
+<button class="px-3 py-1 text-label-xs font-label-xs rounded-md text-on-surface-variant hover:text-on-surface">Auto-Executed</button>
+<button class="px-3 py-1 text-label-xs font-label-xs rounded-md text-on-surface-variant hover:text-on-surface">Overridden</button>
+<button class="px-3 py-1 text-label-xs font-label-xs rounded-md text-on-surface-variant hover:text-on-surface">Escalated</button>
+</div>
+<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant/60 bg-surface-container-lowest text-body-sm font-body-sm text-on-surface hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-sm">download</span>
+<span class="">Export CSV</span>
+</button>
+</div>
+</div>
+<!-- SUMMARY METRICS CARDS (Bento Grid) -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+<!-- Metric 1: Total Decisions Run -->
+<div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/50 shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between text-on-surface-variant">
+<span class="text-label-xs font-label-xs tracking-wider uppercase">Total Decisions Run</span>
+<span class="p-1.5 rounded-lg bg-surface-container-low text-secondary">
+<span class="material-symbols-outlined text-lg">schema</span>
+</span>
+</div>
+<div class="mt-3">
+<div class="text-display-lg font-display-lg text-on-surface tracking-tight">142</div>
+<div class="flex items-center gap-1 mt-1 text-label-xs font-label-xs text-tertiary font-medium">
+<span class="material-symbols-outlined text-xs">trending_up</span>
+<span class="">+18.4% vs last week</span>
+</div>
+</div>
+</div>
+<!-- Metric 2: Autonomous Execution Rate -->
+<div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/50 shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between text-on-surface-variant">
+<span class="text-label-xs font-label-xs tracking-wider uppercase">Autonomous Execution Rate</span>
+<span class="p-1.5 rounded-lg bg-surface-container-low text-tertiary">
+<span class="material-symbols-outlined text-lg">bolt</span>
+</span>
+</div>
+<div class="mt-3">
+<div class="text-display-lg font-display-lg text-on-surface tracking-tight">91.5%</div>
+<div class="w-full bg-surface-container-low h-1.5 rounded-full mt-2 overflow-hidden">
+<div class="bg-tertiary h-full rounded-full" style="width: 91.5%;"></div>
+</div>
+</div>
+</div>
+<!-- Metric 3: HITL Overrides -->
+<div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/50 shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between text-on-surface-variant">
+<span class="text-label-xs font-label-xs tracking-wider uppercase">HITL Overrides</span>
+<span class="p-1.5 rounded-lg bg-surface-container-low text-primary">
+<span class="material-symbols-outlined text-lg">person_alert</span>
+</span>
+</div>
+<div class="mt-3">
+<div class="text-display-lg font-display-lg text-on-surface tracking-tight">8</div>
+<div class="flex items-center gap-1 mt-1 text-label-xs font-label-xs text-on-surface-variant">
+<span class="">5.6% human divergence index</span>
+</div>
+</div>
+</div>
+<!-- Metric 4: Avg Resolution Time -->
+<div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/50 shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between text-on-surface-variant">
+<span class="text-label-xs font-label-xs tracking-wider uppercase">Avg Resolution Time</span>
+<span class="p-1.5 rounded-lg bg-surface-container-low text-secondary">
+<span class="material-symbols-outlined text-lg">timer</span>
+</span>
+</div>
+<div class="mt-3">
+<div class="text-display-lg font-display-lg text-on-surface tracking-tight">1.2s</div>
+<div class="flex items-center gap-1 mt-1 text-label-xs font-label-xs text-tertiary">
+<span class="material-symbols-outlined text-xs">speed</span>
+<span class="">Sub-second deterministic rules</span>
+</div>
+</div>
+</div>
+</div>
+<!-- MAIN AUDIT LOGS TABLE SECTION -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant/60 shadow-sm overflow-hidden flex flex-col">
+<!-- Table Filters & Search Bar -->
+<div class="p-4 border-b border-outline-variant/40 flex flex-col sm:flex-row items-center justify-between gap-3 bg-surface-bright">
+<div class="relative w-full sm:w-80">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-base">search</span>
+<input class="w-full pl-9 pr-3 py-1.5 text-body-sm font-body-sm rounded-lg border border-outline-variant/60 bg-surface-container-lowest focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-on-surface placeholder:text-on-surface-variant/70" placeholder="Filter by SKU, Trigger, or Scenario..." type="text">
+</div>
+<div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+<span class="text-label-xs font-label-xs text-on-surface-variant">Showing 6 of 142 records</span>
+<button class="p-1.5 rounded-lg border border-outline-variant/50 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-base">filter_list</span>
+</button>
+</div>
+</div>
+<!-- Data Table -->
+<div class="overflow-x-auto w-full">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low/70 border-b border-outline-variant/40 text-on-surface-variant text-label-xs font-label-xs uppercase tracking-wider">
+<th class="py-3 px-4 font-semibold">Timestamp / When</th>
+<th class="py-3 px-4 font-semibold">Scenario</th>
+<th class="py-3 px-4 font-semibold">SKU</th>
+<th class="py-3 px-4 font-semibold">Trigger</th>
+<th class="py-3 px-4 font-semibold">Agent Decision</th>
+<th class="py-3 px-4 font-semibold">Quantity</th>
+<th class="py-3 px-4 font-semibold">Execution Status</th>
+<th class="py-3 px-4 font-semibold text-right">Telemetry &amp; Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/30 text-body-sm font-body-sm">
+<!-- Row 1: ACCEPT / Executed -->
+<tr class="hover:bg-surface-container-low/40 transition-colors">
+<td class="py-3 px-4 whitespace-nowrap">
+<div class="font-medium text-on-surface">Today, 14:32:10</div>
+<div class="text-label-xs font-label-xs text-on-surface-variant">Run #0842-A</div>
+</td>
+<td class="py-3 px-4">
+<span class="font-medium text-on-surface">S1 · Recommendation Review</span>
+</td>
+<td class="py-3 px-4">
+<span class="font-code-md text-code-md font-semibold text-on-surface bg-surface-container-low px-2 py-0.5 rounded border border-outline-variant/40">SKU-7740</span>
+</td>
+<td class="py-3 px-4 whitespace-nowrap text-on-surface-variant">
+<div class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="">System Reorder Alert</span>
+</div>
+</td>
+<td class="py-3 px-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-label-xs font-label-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                  ACCEPT
+                </span>
+</td>
+<td class="py-3 px-4 font-code-md text-code-md font-medium text-on-surface">
+                800 units
+              </td>
+<td class="py-3 px-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-label-xs font-label-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+<span class="material-symbols-outlined text-xs">check_circle</span>
+                  Executed
+                </span>
+</td>
+<td class="py-3 px-4 text-right whitespace-nowrap">
+<div class="flex items-center justify-end gap-3">
+<span class="text-code-sm font-code-sm text-on-surface-variant">1.2s · 4 tools</span>
+<button class="text-primary hover:text-primary-container font-semibold text-label-xs font-label-xs hover:underline flex items-center gap-0.5" onclick="toggleDrawer(true, 'SKU-7740', 'S1 · Recommendation Review', '800 units', 'ACCEPT')">
+                    View Log
+                    <span class="material-symbols-outlined text-xs">chevron_right</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2: MODIFY / Pending Approval -->
+<tr class="hover:bg-surface-container-low/40 transition-colors bg-amber-500/[0.02]">
+<td class="py-3 px-4 whitespace-nowrap">
+<div class="font-medium text-on-surface">Today, 11:15:04</div>
+<div class="text-label-xs font-label-xs text-on-surface-variant">Run #0841-M</div>
+</td>
+<td class="py-3 px-4">
+<span class="font-medium text-on-surface">S2 · Vendor Shortfall Resourcing</span>
+</td>
+<td class="py-3 px-4">
+<span class="font-code-md text-code-md font-semibold text-on-surface bg-surface-container-low px-2 py-0.5 rounded border border-outline-variant/40">SKU-3301</span>
+</td>
+<td class="py-3 px-4 whitespace-nowrap text-on-surface-variant">
+<div class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+<span class="">Vendor Shortfall API webhook</span>
+</div>
+</td>
+<td class="py-3 px-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-label-xs font-label-xs font-semibold bg-amber-50 text-amber-900 border border-amber-200">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+                  MODIFY
+                </span>
+</td>
+<td class="py-3 px-4 font-code-md text-code-md font-medium text-on-surface">
+                Modified: <span class="line-through text-on-surface-variant/70">500</span> → <span class="font-bold text-amber-700">350</span>
+</td>
+<td class="py-3 px-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-label-xs font-label-xs font-semibold bg-amber-50 text-amber-900 border border-amber-200">
+<span class="material-symbols-outlined text-xs">pending</span>
+                  Pending Approval
+                </span>
+</td>
+<td class="py-3 px-4 text-right whitespace-nowrap">
+<div class="flex items-center justify-end gap-3">
+<span class="text-code-sm font-code-sm text-on-surface-variant">1.4s · 5 tools</span>
+<button class="text-primary hover:text-primary-container font-semibold text-label-xs font-label-xs hover:underline flex items-center gap-0.5" onclick="toggleDrawer(true, 'SKU-3301', 'S2 · Vendor Shortfall Resourcing', '350 units (down from 500)', 'MODIFY')">
+                    View Log
+                    <span class="material-symbols-outlined text-xs">chevron_right</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3: REJECT / Overridden -->
+<tr class="hover:bg-surface-container-low/40 transition-colors">
+<td class="py-3 px-4 whitespace-nowrap">
+<div class="font-medium text-on-surface">Yesterday, 16:45:22</div>
+<div class="text-label-xs font-label-xs text-on-surface-variant">Run #0839-R</div>
+</td>
+<td class="py-3 px-4">
+<span class="font-medium text-on-surface">S1 · Budget Limit Exceeded</span>
+</td>
+<td class="py-3 px-4">
+<span class="font-code-md text-code-md font-semibold text-on-surface bg-surface-container-low px-2 py-0.5 rounded border border-outline-variant/40">SKU-1042</span>
+</td>
+<td class="py-3 px-4 whitespace-nowrap text-on-surface-variant">
+<div class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+<span class="">Nightly Batch Job</span>
+</div>
+</td>
+<td class="py-3 px-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-label-xs font-label-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200">
+<span class="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
+                  REJECT
+                </span>
+</td>
+<td class="py-3 px-4 font-code-md text-code-md font-medium text-rose-700">
+                Rejected: 0
+              </td>
+<td class="py-3 px-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-label-xs font-label-xs font-semibold bg-surface-container-high text-on-surface-variant border border-outline-variant/60">
+<span class="material-symbols-outlined text-xs">rule_settings</span>
+                  Overridden
+                </span>
+</td>
+<td class="py-3 px-4 text-right whitespace-nowrap">
+<div class="flex items-center justify-end gap-3">
+<span class="text-code-sm font-code-sm text-on-surface-variant">0.9s · 3 tools</span>
+<button class="text-primary hover:text-primary-container font-semibold text-label-xs font-label-xs hover:underline flex items-center gap-0.5" onclick="toggleDrawer(true, 'SKU-1042', 'S1 · Budget Limit Exceeded', '0 units (Rejected)', 'REJECT')">
+                    View Log
+                    <span class="material-symbols-outlined text-xs">chevron_right</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 4: ESCALATED / Pending Approval -->
+<tr class="hover:bg-surface-container-low/40 transition-colors bg-purple-500/[0.02]">
+<td class="py-3 px-4 whitespace-nowrap">
+<div class="font-medium text-on-surface">Yesterday, 14:10:09</div>
+<div class="text-label-xs font-label-xs text-on-surface-variant">Run #0837-E</div>
+</td>
+<td class="py-3 px-4">
+<span class="font-medium text-on-surface">S1 · Demand Anomaly Spike</span>
+</td>
+<td class="py-3 px-4">
+<span class="font-code-md text-code-md font-semibold text-on-surface bg-surface-container-low px-2 py-0.5 rounded border border-outline-variant/40">SKU-9021</span>
+</td>
+<td class="py-3 px-4 whitespace-nowrap text-on-surface-variant">
+<div class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+<span class="">System Reorder Alert</span>
+</div>
+</td>
+<td class="py-3 px-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-label-xs font-label-xs font-semibold bg-purple-50 text-purple-900 border border-purple-200">
+<span class="w-1.5 h-1.5 rounded-full bg-purple-600"></span>
+                  ESCALATED
+                </span>
+</td>
+<td class="py-3 px-4 font-code-md text-code-md font-medium text-on-surface">
+                250 split order
+              </td>
+<td class="py-3 px-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-label-xs font-label-xs font-semibold bg-amber-50 text-amber-900 border border-amber-200">
+<span class="material-symbols-outlined text-xs">pending</span>
+                  Pending Approval
+                </span>
+</td>
+<td class="py-3 px-4 text-right whitespace-nowrap">
+<div class="flex items-center justify-end gap-3">
+<span class="text-code-sm font-code-sm text-on-surface-variant">1.8s · 6 tools</span>
+<button class="text-primary hover:text-primary-container font-semibold text-label-xs font-label-xs hover:underline flex items-center gap-0.5" onclick="toggleDrawer(true, 'SKU-9021', 'S1 · Demand Anomaly Spike', '250 split order', 'ESCALATED')">
+                    View Log
+                    <span class="material-symbols-outlined text-xs">chevron_right</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 5: ACCEPT / Executed -->
+<tr class="hover:bg-surface-container-low/40 transition-colors">
+<td class="py-3 px-4 whitespace-nowrap">
+<div class="font-medium text-on-surface">Yesterday, 09:20:15</div>
+<div class="text-label-xs font-label-xs text-on-surface-variant">Run #0834-A</div>
+</td>
+<td class="py-3 px-4">
+<span class="font-medium text-on-surface">S1 · Recommendation Review</span>
+</td>
+<td class="py-3 px-4">
+<span class="font-code-md text-code-md font-semibold text-on-surface bg-surface-container-low px-2 py-0.5 rounded border border-outline-variant/40">SKU-4412</span>
+</td>
+<td class="py-3 px-4 whitespace-nowrap text-on-surface-variant">
+<div class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+<span class="">Nightly Batch Job</span>
+</div>
+</td>
+<td class="py-3 px-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-label-xs font-label-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                  ACCEPT
+                </span>
+</td>
+<td class="py-3 px-4 font-code-md text-code-md font-medium text-on-surface">
+                1,200 units
+              </td>
+<td class="py-3 px-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-label-xs font-label-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+<span class="material-symbols-outlined text-xs">check_circle</span>
+                  Executed
+                </span>
+</td>
+<td class="py-3 px-4 text-right whitespace-nowrap">
+<div class="flex items-center justify-end gap-3">
+<span class="text-code-sm font-code-sm text-on-surface-variant">1.1s · 4 tools</span>
+<button class="text-primary hover:text-primary-container font-semibold text-label-xs font-label-xs hover:underline flex items-center gap-0.5" onclick="toggleDrawer(true, 'SKU-4412', 'S1 · Recommendation Review', '1,200 units', 'ACCEPT')">
+                    View Log
+                    <span class="material-symbols-outlined text-xs">chevron_right</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 6: MODIFY / Executed -->
+<tr class="hover:bg-surface-container-low/40 transition-colors">
+<td class="py-3 px-4 whitespace-nowrap">
+<div class="font-medium text-on-surface">2 days ago, 18:02:44</div>
+<div class="text-label-xs font-label-xs text-on-surface-variant">Run #0831-M</div>
+</td>
+<td class="py-3 px-4">
+<span class="font-medium text-on-surface">S2 · Vendor Shortfall Resourcing</span>
+</td>
+<td class="py-3 px-4">
+<span class="font-code-md text-code-md font-semibold text-on-surface bg-surface-container-low px-2 py-0.5 rounded border border-outline-variant/40">SKU-6520</span>
+</td>
+<td class="py-3 px-4 whitespace-nowrap text-on-surface-variant">
+<div class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+<span class="">Vendor Shortfall API webhook</span>
+</div>
+</td>
+<td class="py-3 px-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-label-xs font-label-xs font-semibold bg-amber-50 text-amber-900 border border-amber-200">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+                  MODIFY
+                </span>
+</td>
+<td class="py-3 px-4 font-code-md text-code-md font-medium text-on-surface">
+                Modified: <span class="line-through text-on-surface-variant/70">600</span> → <span class="font-bold text-amber-700">420</span>
+</td>
+<td class="py-3 px-4 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-label-xs font-label-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+<span class="material-symbols-outlined text-xs">check_circle</span>
+                  Executed
+                </span>
+</td>
+<td class="py-3 px-4 text-right whitespace-nowrap">
+<div class="flex items-center justify-end gap-3">
+<span class="text-code-sm font-code-sm text-on-surface-variant">1.3s · 5 tools</span>
+<button class="text-primary hover:text-primary-container font-semibold text-label-xs font-label-xs hover:underline flex items-center gap-0.5" onclick="toggleDrawer(true, 'SKU-6520', 'S2 · Vendor Shortfall Resourcing', '420 units (from 600)', 'MODIFY')">
+                    View Log
+                    <span class="material-symbols-outlined text-xs">chevron_right</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination footer -->
+<div class="p-4 border-t border-outline-variant/40 flex items-center justify-between text-body-sm font-body-sm text-on-surface-variant bg-surface-bright">
+<div class="text-label-xs font-label-xs">
+          Page <span class="font-bold text-on-surface">1</span> of <span class="font-bold text-on-surface">24</span>
+</div>
+<div class="flex items-center gap-1">
+<button class="px-2.5 py-1 rounded border border-outline-variant/40 bg-surface-container-lowest text-on-surface-variant/50 cursor-not-allowed">Previous</button>
+<button class="px-2.5 py-1 rounded border border-outline-variant/60 bg-surface-container-lowest text-on-surface hover:bg-surface-container-low">Next</button>
+</div>
+</div>
+</div>
+</main>
+<!-- SLIDE-OVER TELEMETRY & LOG DETAILS DRAWER -->
+<div class="fixed inset-0 z-50 overflow-hidden pointer-events-none transition-opacity duration-300 opacity-0" id="log-drawer">
+<!-- Backdrop -->
+<div class="absolute inset-0 bg-on-surface/30 backdrop-blur-xs transition-opacity duration-300" onclick="toggleDrawer(false)"></div>
+<div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
+<div class="w-screen max-w-md pointer-events-auto bg-surface-container-lowest border-l border-outline-variant shadow-2xl flex flex-col transform translate-x-full transition-transform duration-300 ease-in-out" id="drawer-panel">
+<!-- Drawer Header -->
+<div class="p-5 border-b border-outline-variant/40 flex items-center justify-between bg-surface-bright">
+<div class="flex items-center gap-2.5">
+<span class="p-2 rounded-lg bg-surface-container-high text-primary">
+<span class="material-symbols-outlined text-xl">biotech</span>
+</span>
+<div>
+<h3 class="text-headline-sm font-headline-sm text-on-surface" id="drawer-sku">SKU-7740</h3>
+<p class="text-label-xs font-label-xs text-on-surface-variant" id="drawer-scenario">S1 · Recommendation Review</p>
+</div>
+</div>
+<button class="p-1 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors" onclick="toggleDrawer(false)">
+<span class="material-symbols-outlined text-xl">close</span>
+</button>
+</div>
+<!-- Drawer Content Body -->
+<div class="flex-1 overflow-y-auto p-5 space-y-6">
+<!-- Run Metadata Card -->
+<div class="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-surface-container-low border border-outline-variant/40">
+<div>
+<div class="text-label-xs font-label-xs uppercase tracking-wider text-on-surface-variant">Decision Output</div>
+<div class="text-title-md font-title-md text-on-surface mt-0.5" id="drawer-decision">ACCEPT</div>
+</div>
+<div>
+<div class="text-label-xs font-label-xs uppercase tracking-wider text-on-surface-variant">Recommended Qty</div>
+<div class="text-title-md font-title-md font-code-md text-on-surface mt-0.5" id="drawer-qty">800 units</div>
+</div>
+<div class="border-t border-outline-variant/30 pt-2">
+<div class="text-label-xs font-label-xs uppercase tracking-wider text-on-surface-variant">LLM Latency</div>
+<div class="text-code-md font-code-md text-tertiary mt-0.5 flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">timer</span> 1.2s
+              </div>
+</div>
+<div class="border-t border-outline-variant/30 pt-2">
+<div class="text-label-xs font-label-xs uppercase tracking-wider text-on-surface-variant">Tools Executed</div>
+<div class="text-code-md font-code-md text-secondary mt-0.5 flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">terminal</span> 4 Tools
+              </div>
+</div>
+</div>
+<!-- Tool Execution Trace Chain -->
+<div>
+<h4 class="text-title-md font-title-md text-on-surface mb-3 flex items-center justify-between">
+<span class="">Agent Tool Execution Chain</span>
+<span class="text-label-xs font-label-xs text-on-surface-variant">Chain-of-Thought verified</span>
+</h4>
+<div class="relative pl-6 space-y-4 border-l-2 border-outline-variant/40 ml-2">
+<!-- Tool Step 1 -->
+<div class="relative">
+<span class="absolute -left-[31px] top-0.5 w-4 h-4 rounded-full bg-tertiary flex items-center justify-center text-on-tertiary text-[9px]">✓</span>
+<div class="text-body-sm font-body-sm font-semibold text-on-surface">Fetch Inventory Levels</div>
+<div class="inline-block mt-1 font-code-sm text-code-sm bg-surface-container-low px-2 py-0.5 rounded border border-outline-variant/40 text-on-surface-variant">
+                  inventory.get_sku_metrics('SKU-7740')
+                </div>
+<div class="text-body-sm font-body-sm text-on-surface-variant mt-1">Returned: On-hand: 120 units, Safety stock threshold: 450 units. Depletion pace: 65 units/day.</div>
+</div>
+<!-- Tool Step 2 -->
+<div class="relative">
+<span class="absolute -left-[31px] top-0.5 w-4 h-4 rounded-full bg-tertiary flex items-center justify-center text-on-tertiary text-[9px]">✓</span>
+<div class="text-body-sm font-body-sm font-semibold text-on-surface">Query Supplier Lead Times</div>
+<div class="inline-block mt-1 font-code-sm text-code-sm bg-surface-container-low px-2 py-0.5 rounded border border-outline-variant/40 text-on-surface-variant">
+                  suppliers.get_lead_time(vendor_id='V-901', sku='SKU-7740')
+                </div>
+<div class="text-body-sm font-body-sm text-on-surface-variant mt-1">Returned: 48h lead-time guaranteed. Reliability score: 98.2%. MOQ: 500 units.</div>
+</div>
+<!-- Tool Step 3 -->
+<div class="relative">
+<span class="absolute -left-[31px] top-0.5 w-4 h-4 rounded-full bg-tertiary flex items-center justify-center text-on-tertiary text-[9px]">✓</span>
+<div class="text-body-sm font-body-sm font-semibold text-on-surface">Check Allocated Working Capital</div>
+<div class="inline-block mt-1 font-code-sm text-code-sm bg-surface-container-low px-2 py-0.5 rounded border border-outline-variant/40 text-on-surface-variant">
+                  finance.check_budget(category='Dairy &amp; Chilled')
+                </div>
+<div class="text-body-sm font-body-sm text-on-surface-variant mt-1">Budget clearance confirmed ($18,400 remaining on tranche).</div>
+</div>
+<!-- Tool Step 4 -->
+<div class="relative">
+<span class="absolute -left-[31px] top-0.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center text-on-primary text-[9px]">★</span>
+<div class="text-body-sm font-body-sm font-semibold text-on-surface">Autonomous Decision Synthesis</div>
+<div class="inline-block mt-1 font-code-sm text-code-sm bg-primary-fixed text-on-primary-fixed px-2 py-0.5 rounded border border-primary/20">
+                  agent.commit_po(action='ACCEPT', qty=800)
+                </div>
+<div class="text-body-sm font-body-sm text-on-surface-variant mt-1">Confidence Score: 0.96. No human intervention requested. Auto-dispatched EDI order.</div>
+</div>
+</div>
+</div>
+<!-- HITL Rationale Audit Box -->
+<div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/50">
+<h5 class="text-label-xs font-label-xs uppercase tracking-wider text-on-surface font-semibold flex items-center gap-1.5 mb-2">
+<span class="material-symbols-outlined text-sm text-tertiary">verified_user</span>
+              Human Accountability Seal
+            </h5>
+<p class="text-body-sm font-body-sm text-on-surface-variant leading-relaxed">
+              Order PO-4481 was issued autonomously under policy guideline <strong class="text-on-surface font-semibold">Tier-1 Quick-Commerce Restock</strong>. Audit digest is sealed with HMAC sha256.
+            </p>
+</div>
+</div>
+<!-- Drawer Footer -->
+<div class="p-4 border-t border-outline-variant/40 bg-surface-bright flex items-center justify-between">
+<button class="px-3.5 py-1.5 rounded-lg border border-outline-variant/60 text-body-sm font-body-sm text-on-surface hover:bg-surface-container-low transition-colors" onclick="toggleDrawer(false)">
+            Close Panel
+          </button>
+<button class="px-4 py-1.5 rounded-lg bg-primary text-on-primary text-body-sm font-body-sm font-semibold hover:bg-primary-container transition-all active:scale-[0.98]">
+            Download Trace JSON
+          </button>
+</div>
+</div>
+</div>
+</div>
+<script>
+    function toggleDrawer(open, sku, scenario, qty, decision) {
+      const drawer = document.getElementById('log-drawer');
+      const panel = document.getElementById('drawer-panel');
+      
+      if (open) {
+        if(sku) document.getElementById('drawer-sku').innerText = sku;
+        if(scenario) document.getElementById('drawer-scenario').innerText = scenario;
+        if(qty) document.getElementById('drawer-qty').innerText = qty;
+        if(decision) document.getElementById('drawer-decision').innerText = decision;
+
+        drawer.classList.remove('pointer-events-none', 'opacity-0');
+        drawer.classList.add('pointer-events-auto', 'opacity-100');
+        panel.classList.remove('translate-x-full');
+        panel.classList.add('translate-x-0');
+      } else {
+        drawer.classList.remove('pointer-events-auto', 'opacity-100');
+        drawer.classList.add('pointer-events-none', 'opacity-0');
+        panel.classList.remove('translate-x-0');
+        panel.classList.add('translate-x-full');
+      }
+    }
+  </script>
+
+
+</body></html>

@@ -1,0 +1,571 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Client Orders &amp; Outbound Demand - AI Purchasing Agent</title>
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-surface": "#131b2e",
+            "surface-tint": "#b52518",
+            "on-primary-fixed-variant": "#920501",
+            "on-background": "#131b2e",
+            "surface-container": "#eaedff",
+            "surface": "#faf8ff",
+            "secondary": "#006398",
+            "on-secondary-container": "#00476e",
+            "on-secondary-fixed": "#001d31",
+            "on-surface-variant": "#5a403c",
+            "surface-container-highest": "#dae2fd",
+            "outline-variant": "#e3beb8",
+            "tertiary-container": "#00855b",
+            "tertiary-fixed-dim": "#4edea3",
+            "on-tertiary-fixed": "#002113",
+            "surface-variant": "#dae2fd",
+            "background": "#faf8ff",
+            "surface-container-low": "#f2f3ff",
+            "tertiary-fixed": "#6ffbbe",
+            "surface-bright": "#faf8ff",
+            "surface-container-lowest": "#ffffff",
+            "secondary-container": "#5bb8fe",
+            "on-error": "#ffffff",
+            "on-tertiary-container": "#f5fff6",
+            "inverse-primary": "#ffb4a8",
+            "on-tertiary": "#ffffff",
+            "on-tertiary-fixed-variant": "#005236",
+            "surface-dim": "#d2d9f4",
+            "on-primary": "#ffffff",
+            "on-primary-container": "#fffbff",
+            "on-primary-fixed": "#410000",
+            "secondary-fixed-dim": "#93ccff",
+            "secondary-fixed": "#cce5ff",
+            "on-secondary": "#ffffff",
+            "error-container": "#ffdad6",
+            "on-error-container": "#93000a",
+            "on-secondary-fixed-variant": "#004b73",
+            "error": "#ba1a1a",
+            "primary": "#b22315",
+            "inverse-on-surface": "#eef0ff",
+            "inverse-surface": "#283044",
+            "outline": "#8f706b",
+            "primary-container": "#d53d2b",
+            "surface-container-high": "#e2e7ff",
+            "tertiary": "#006947",
+            "primary-fixed": "#ffdad4",
+            "primary-fixed-dim": "#ffb4a8"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "margin": "1rem",
+            "space-sm": "0.5rem",
+            "space-md": "1rem",
+            "space-lg": "1.5rem",
+            "space-xs": "0.25rem",
+            "gutter-desktop": "1.5rem",
+            "margin-desktop": "2rem",
+            "gutter": "1rem",
+            "space-xl": "2rem"
+          },
+          "fontFamily": {
+            "label-xs": ["Inter"],
+            "code-md": ["JetBrains Mono"],
+            "headline-sm": ["Inter"],
+            "code-sm": ["JetBrains Mono"],
+            "headline-lg": ["Inter"],
+            "body-md": ["Inter"],
+            "body-sm": ["Inter"],
+            "title-md": ["Inter"],
+            "display-lg": ["Inter"]
+          },
+          "fontSize": {
+            "label-xs": ["11px", { "lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600" }],
+            "code-md": ["13px", { "lineHeight": "18px", "fontWeight": "500" }],
+            "headline-sm": ["18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "code-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+            "headline-lg": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+            "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+            "title-md": ["15px", { "lineHeight": "22px", "fontWeight": "600" }],
+            "display-lg": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+          }
+        },
+      },
+    }
+  </script>
+</head>
+<body class="bg-surface font-body-md text-body-md text-on-surface min-h-screen antialiased flex flex-col">
+<!-- Shared Component: TopNavBar (Exact JSON execution and styles) -->
+<header class="sticky top-0 z-50 flex items-center justify-between w-full px-6 bg-surface dark:bg-inverse-surface border-b border-outline-variant dark:border-outline h-16 shadow-sm dark:shadow-none">
+<!-- Left: Brand Logo & Product Name -->
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-2.5 cursor-pointer">
+<div class="w-8 h-8 rounded-lg bg-primary-container flex items-center justify-center text-on-primary font-headline-sm text-headline-sm shadow-sm">
+<span class="material-symbols-outlined text-[18px]">smart_toy</span>
+</div>
+<span class="text-headline-sm font-headline-sm font-bold text-on-surface dark:text-inverse-on-surface tracking-tight">BuyIt</span>
+</div>
+<!-- Navigation Links with Contextual Active Mapping (Client Orders active) -->
+<nav class="hidden md:flex items-center gap-6 pt-4">
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-inverse-on-surface font-medium pb-4 hover:bg-surface-container-low dark:hover:bg-inverse-surface transition-colors duration-150 transition-all active:scale-[0.98]" href="#">Agent</a>
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-inverse-on-surface font-medium pb-4 hover:bg-surface-container-low dark:hover:bg-inverse-surface transition-colors duration-150 transition-all active:scale-[0.98]" href="#">Inventory</a>
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-inverse-on-surface font-medium pb-4 hover:bg-surface-container-low dark:hover:bg-inverse-surface transition-colors duration-150 transition-all active:scale-[0.98]" href="#">Purchase Orders</a>
+<!-- Active Tab with Coral indicator per style_active_navigation and user requirement -->
+<a class="border-b-2 border-primary dark:border-primary-container text-primary dark:text-primary-container font-semibold pb-4 transition-all duration-150 active:scale-[0.98] flex items-center gap-1.5" href="#">
+<span class="inline-block w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
+          Client Orders
+        </a>
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-inverse-on-surface font-medium pb-4 hover:bg-surface-container-low dark:hover:bg-inverse-surface transition-colors duration-150 transition-all active:scale-[0.98]" href="#">Reorder Logs</a>
+<a class="text-on-surface-variant dark:text-surface-variant hover:text-on-surface dark:hover:text-inverse-on-surface font-medium pb-4 hover:bg-surface-container-low dark:hover:bg-inverse-surface transition-colors duration-150 transition-all active:scale-[0.98]" href="#">Evaluation</a>
+</nav>
+</div>
+<!-- Right: Trailing Actions, LLM indicator, Reset, Icons & Avatar -->
+<div class="flex items-center gap-3">
+<!-- LLM Pill -->
+<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-lowest border border-outline-variant text-on-surface font-code-sm text-code-sm shadow-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+<span class="font-medium text-on-surface">LLM: openai</span>
+</div>
+<!-- Reset demo data button -->
+<button class="px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface font-label-xs text-label-xs font-semibold hover:bg-surface-container-low transition-colors duration-150 active:scale-[0.98]">
+        Reset demo data
+      </button>
+<div class="h-5 w-px bg-outline-variant"></div>
+<!-- Trailing icon actions -->
+<button class="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors" title="notifications">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+</button>
+<button class="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors" title="settings">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+</button>
+<!-- Profile image alt per JSON -->
+<div class="w-8 h-8 rounded-full bg-secondary text-on-secondary flex items-center justify-center font-label-xs text-label-xs font-semibold ring-2 ring-surface-container ml-1">
+<span class="material-symbols-outlined text-[16px]">person</span>
+</div>
+</div>
+</header>
+<!-- Sub-Header / Scenario Tabs Bar -->
+<div class="bg-surface-container-lowest border-b border-outline-variant px-6 py-2.5">
+<div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+<div class="flex items-center gap-3">
+<span class="font-label-xs text-label-xs uppercase text-on-surface-variant tracking-wider">Demand Horizon</span>
+<div class="inline-flex p-1 bg-surface-container-low rounded-lg gap-1 border border-outline-variant">
+<button class="px-3 py-1 rounded-md text-label-xs font-label-xs font-semibold bg-primary-container text-on-primary shadow-sm transition-all">Today (Active SLA)</button>
+<button class="px-3 py-1 rounded-md text-label-xs font-label-xs text-on-surface-variant hover:text-on-surface hover:bg-surface-container-lowest transition-all">Next 24h Buffer</button>
+<button class="px-3 py-1 rounded-md text-label-xs font-label-xs text-on-surface-variant hover:text-on-surface hover:bg-surface-container-lowest transition-all">Weekly Forecast</button>
+</div>
+</div>
+<div class="flex items-center gap-2 font-code-sm text-code-sm text-on-surface-variant">
+<span class="inline-block w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="">Auto-Allocation Engine: <strong>Synchronized (14s ago)</strong></span>
+</div>
+</div>
+</div>
+<!-- Main Content Canvas -->
+<main class="flex-1 max-w-7xl w-full mx-auto px-6 py-6 space-y-6">
+<!-- Title & Control Bar -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
+<div>
+<div class="flex items-center gap-2">
+<h1 class="font-headline-lg text-headline-lg font-bold text-on-surface tracking-tight">Client Orders &amp; Outbound Demand</h1>
+<span class="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-code-sm text-code-sm font-semibold border border-tertiary-fixed-dim">Live Feed</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Real-time store replenishments, outbound fulfillment queue, and automated inventory reserve commitments.</p>
+</div>
+<!-- Live Search & Global Quick Actions -->
+<div class="flex items-center gap-3">
+<div class="relative w-72">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+<input class="w-full pl-9 pr-4 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest font-body-sm text-body-sm text-on-surface placeholder:text-on-surface-variant focus:border-primary-container focus:ring-1 focus:ring-primary-container outline-none transition-all" placeholder="Search Order ID, SKU, dark store..." type="text">
+</div>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-lowest border border-outline-variant text-on-surface font-label-xs text-label-xs font-semibold hover:bg-surface-container-low transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined text-[16px]">tune</span>
+          Filter View
+        </button>
+<button class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-primary-container text-on-primary font-label-xs text-label-xs font-semibold hover:bg-primary transition-all shadow-sm active:scale-[0.98]">
+<span class="material-symbols-outlined text-[16px]">file_download</span>
+          Export Demand Log
+        </button>
+</div>
+</div>
+<!-- Summary KPI Cards (Bento Metric Layout) -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+<!-- Card 1: Total Client Orders -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 shadow-sm relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-xs text-label-xs uppercase text-on-surface-variant font-semibold">Total Client Orders</span>
+<span class="p-1.5 rounded-lg bg-surface-container-low text-secondary">
+<span class="material-symbols-outlined text-[18px]">receipt_long</span>
+</span>
+</div>
+<div class="mt-3 flex items-baseline gap-2">
+<span class="font-display-lg text-display-lg font-bold text-on-surface tracking-tight">84</span>
+<span class="font-code-sm text-code-sm text-tertiary flex items-center font-semibold">
+<span class="material-symbols-outlined text-[14px]">arrow_upward</span> +12% vs yesterday
+          </span>
+</div>
+<div class="mt-2 flex items-center justify-between text-on-surface-variant font-body-sm text-body-sm border-t border-surface-container-high pt-2">
+<span class="">Completed today</span>
+<span class="font-code-md text-code-md font-semibold text-on-surface">62 orders</span>
+</div>
+</div>
+<!-- Card 2: Unfulfilled Units -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 shadow-sm relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-xs text-label-xs uppercase text-on-surface-variant font-semibold">Unfulfilled Units</span>
+<span class="p-1.5 rounded-lg bg-surface-container-low text-primary">
+<span class="material-symbols-outlined text-[18px]">inventory_2</span>
+</span>
+</div>
+<div class="mt-3 flex items-baseline gap-2">
+<span class="font-display-lg text-display-lg font-bold text-on-surface tracking-tight">340</span>
+<span class="font-body-sm text-body-sm font-medium text-on-surface-variant">units</span>
+</div>
+<div class="mt-2 flex items-center justify-between text-on-surface-variant font-body-sm text-body-sm border-t border-surface-container-high pt-2">
+<span class="">In active staging</span>
+<span class="font-code-md text-code-md font-semibold text-primary">210 units</span>
+</div>
+</div>
+<!-- Card 3: Fulfillment Health -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 shadow-sm relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-xs text-label-xs uppercase text-on-surface-variant font-semibold">Fulfillment Health</span>
+<span class="p-1.5 rounded-lg bg-surface-container-low text-tertiary">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+</span>
+</div>
+<div class="mt-3 flex items-baseline gap-2">
+<span class="font-display-lg text-display-lg font-bold text-tertiary tracking-tight">98.4%</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant">target 98.0%</span>
+</div>
+<div class="mt-2 flex items-center justify-between text-on-surface-variant font-body-sm text-body-sm border-t border-surface-container-high pt-2">
+<span class="">Average SLA dispatch</span>
+<span class="font-code-md text-code-md font-semibold text-on-surface">42 mins</span>
+</div>
+</div>
+<!-- Card 4: Stockout Protection -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 shadow-sm relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-xs text-label-xs uppercase text-on-surface-variant font-semibold">Stockout Protection</span>
+<span class="p-1.5 rounded-lg bg-surface-container-low text-tertiary-container">
+<span class="material-symbols-outlined text-[18px]">shield</span>
+</span>
+</div>
+<div class="mt-3 flex items-baseline gap-2">
+<span class="font-headline-lg text-headline-lg font-bold text-on-surface tracking-tight">Active</span>
+<span class="w-2 h-2 rounded-full bg-tertiary animate-ping"></span>
+</div>
+<div class="mt-2 flex items-center justify-between text-on-surface-variant font-body-sm text-body-sm border-t border-surface-container-high pt-2">
+<span class="">Autonomous safeguard</span>
+<span class="font-code-sm text-code-sm font-semibold text-tertiary">Auto-Peg PO</span>
+</div>
+</div>
+</div>
+<!-- Interactive Filter Toolbar -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+<div class="flex items-center gap-2 overflow-x-auto">
+<span class="font-label-xs text-label-xs uppercase text-on-surface-variant font-semibold mr-1">Fulfillment Status:</span>
+<button class="px-3 py-1 rounded-full text-label-xs font-label-xs font-semibold bg-on-surface text-surface-container-lowest transition-all">
+          All (84)
+        </button>
+<button class="px-3 py-1 rounded-full text-label-xs font-label-xs font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low border border-transparent hover:border-outline-variant transition-all">
+          Fulfilled (62)
+        </button>
+<button class="px-3 py-1 rounded-full text-label-xs font-label-xs font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low border border-transparent hover:border-outline-variant transition-all">
+          Processing (14)
+        </button>
+<button class="px-3 py-1 rounded-full text-label-xs font-label-xs font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low border border-transparent hover:border-outline-variant transition-all">
+          Backordered (3)
+        </button>
+<button class="px-3 py-1 rounded-full text-label-xs font-label-xs font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low border border-transparent hover:border-outline-variant transition-all">
+          Allocation Staged (5)
+        </button>
+</div>
+<div class="flex items-center gap-3 text-on-surface-variant font-label-xs text-label-xs">
+<span class="">Showing <strong>5 of 84</strong> Orders</span>
+<div class="flex items-center border border-outline-variant rounded-lg overflow-hidden">
+<button class="p-1 hover:bg-surface-container-low disabled:opacity-30" disabled="">
+<span class="material-symbols-outlined text-[16px]">chevron_left</span>
+</button>
+<span class="px-2 font-code-sm text-code-sm">1 / 17</span>
+<button class="p-1 hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Data Table Card with Sticky Header & Zebra/Hover Rows -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden flex flex-col">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<!-- Sticky Header -->
+<thead class="sticky top-0 bg-surface-container-low border-b border-outline-variant z-10">
+<tr>
+<th class="py-3 px-4 font-label-xs text-label-xs uppercase text-on-surface-variant tracking-wider font-semibold" scope="col">Order ID</th>
+<th class="py-3 px-4 font-label-xs text-label-xs uppercase text-on-surface-variant tracking-wider font-semibold" scope="col">SKU</th>
+<th class="py-3 px-4 font-label-xs text-label-xs uppercase text-on-surface-variant tracking-wider font-semibold" scope="col">Product Name</th>
+<th class="py-3 px-4 font-label-xs text-label-xs uppercase text-on-surface-variant tracking-wider font-semibold" scope="col">Customer / Store Location</th>
+<th class="py-3 px-4 font-label-xs text-label-xs uppercase text-on-surface-variant tracking-wider font-semibold text-right" scope="col">Quantity Ordered</th>
+<th class="py-3 px-4 font-label-xs text-label-xs uppercase text-on-surface-variant tracking-wider font-semibold" scope="col">Status</th>
+<th class="py-3 px-4 font-label-xs text-label-xs uppercase text-on-surface-variant tracking-wider font-semibold" scope="col">Order Date &amp; SLA</th>
+<th class="py-3 px-4 font-label-xs text-label-xs uppercase text-on-surface-variant tracking-wider font-semibold" scope="col">Allocation Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container">
+<!-- Row 1: ORD-9821 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors group">
+<td class="py-3.5 px-4 font-code-md text-code-md font-semibold text-on-surface">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-on-surface-variant text-[16px] group-hover:text-primary">receipt</span>
+<span class="">ORD-9821</span>
+</div>
+</td>
+<td class="py-3.5 px-4 font-code-md text-code-md text-on-surface-variant">SKU-1042</td>
+<td class="py-3.5 px-4 font-body-md text-body-md font-medium text-on-surface">Organic Avocados Hass</td>
+<td class="py-3.5 px-4 font-body-sm text-body-sm text-on-surface">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[16px]">storefront</span>
+<span class="">Dark Store East Hub #4</span>
+</div>
+</td>
+<td class="py-3.5 px-4 font-code-md text-code-md text-right font-semibold text-on-surface">45 units</td>
+<td class="py-3.5 px-4">
+<!-- Fulfilled Green Status Pill -->
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0] font-label-xs text-label-xs font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-[#065F46]"></span>
+                  Fulfilled
+                </span>
+</td>
+<td class="py-3.5 px-4 font-body-sm text-body-sm text-on-surface-variant">
+<div class="flex flex-col">
+<span class="text-on-surface font-medium">Oct 24, 14:10</span>
+<span class="font-code-sm text-code-sm text-tertiary">SLA 2h · On Schedule</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center gap-1 font-code-sm text-code-sm px-2.5 py-1 rounded bg-surface-container text-on-surface font-medium border border-outline-variant">
+<span class="material-symbols-outlined text-tertiary text-[14px]">bolt</span>
+                  Auto-Allocated
+                </span>
+</td>
+</tr>
+<!-- Row 2: ORD-9820 -->
+<tr class="bg-surface/50 hover:bg-surface-container-low/60 transition-colors group">
+<td class="py-3.5 px-4 font-code-md text-code-md font-semibold text-on-surface">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-on-surface-variant text-[16px] group-hover:text-primary">receipt</span>
+<span class="">ORD-9820</span>
+</div>
+</td>
+<td class="py-3.5 px-4 font-code-md text-code-md text-on-surface-variant">SKU-3301</td>
+<td class="py-3.5 px-4 font-body-md text-body-md font-medium text-on-surface">Whole Milk 1 Gal</td>
+<td class="py-3.5 px-4 font-body-sm text-body-sm text-on-surface">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[16px]">warehouse</span>
+<span class="">Micro-Fulfillment Center 12</span>
+</div>
+</td>
+<td class="py-3.5 px-4 font-code-md text-code-md text-right font-semibold text-on-surface">120 units</td>
+<td class="py-3.5 px-4">
+<!-- Staged for Dispatch Blue Status Pill -->
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#F0F9FF] text-[#075985] border border-[#BAE6FD] font-label-xs text-label-xs font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-[#075985]"></span>
+                  Staged for Dispatch
+                </span>
+</td>
+<td class="py-3.5 px-4 font-body-sm text-body-sm text-on-surface-variant">
+<div class="flex flex-col">
+<span class="text-on-surface font-medium">Oct 24, 13:45</span>
+<span class="font-code-sm text-code-sm text-secondary">SLA 4h · Pallet Ready</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center gap-1 font-code-sm text-code-sm px-2.5 py-1 rounded bg-surface-container text-on-surface font-medium border border-outline-variant">
+<span class="material-symbols-outlined text-tertiary text-[14px]">bolt</span>
+                  Auto-Allocated
+                </span>
+</td>
+</tr>
+<!-- Row 3: ORD-9818 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors group">
+<td class="py-3.5 px-4 font-code-md text-code-md font-semibold text-on-surface">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-on-surface-variant text-[16px] group-hover:text-primary">receipt</span>
+<span class="">ORD-9818</span>
+</div>
+</td>
+<td class="py-3.5 px-4 font-code-md text-code-md text-on-surface-variant">SKU-7740</td>
+<td class="py-3.5 px-4 font-body-md text-body-md font-medium text-on-surface">Arabica Coffee Beans 1kg</td>
+<td class="py-3.5 px-4 font-body-sm text-body-sm text-on-surface">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[16px]">local_convenience_store</span>
+<span class="">Metro Express B9</span>
+</div>
+</td>
+<td class="py-3.5 px-4 font-code-md text-code-md text-right font-semibold text-on-surface">80 units</td>
+<td class="py-3.5 px-4">
+<!-- Pending Inventory Inbound Amber Status Pill -->
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A] font-label-xs text-label-xs font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-[#92400E]"></span>
+                  Pending Inventory Inbound
+                </span>
+</td>
+<td class="py-3.5 px-4 font-body-sm text-body-sm text-on-surface-variant">
+<div class="flex flex-col">
+<span class="text-on-surface font-medium">Oct 24, 12:30</span>
+<span class="font-code-sm text-code-sm text-primary">SLA 1.5h · Fast-Tracked</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center gap-1 font-code-sm text-code-sm px-2.5 py-1 rounded bg-[#FFFBEB] text-[#92400E] font-medium border border-[#FDE68A]">
+<span class="material-symbols-outlined text-[14px]">link</span>
+                  Linked to PO-2026-0891
+                </span>
+</td>
+</tr>
+<!-- Row 4: ORD-9815 -->
+<tr class="bg-surface/50 hover:bg-surface-container-low/60 transition-colors group">
+<td class="py-3.5 px-4 font-code-md text-code-md font-semibold text-on-surface">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-on-surface-variant text-[16px] group-hover:text-primary">receipt</span>
+<span class="">ORD-9815</span>
+</div>
+</td>
+<td class="py-3.5 px-4 font-code-md text-code-md text-on-surface-variant">SKU-2849</td>
+<td class="py-3.5 px-4 font-body-md text-body-md font-medium text-on-surface">Artisan Sourdough Loaf 500g</td>
+<td class="py-3.5 px-4 font-body-sm text-body-sm text-on-surface">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[16px]">storefront</span>
+<span class="">Dark Store East Hub #4</span>
+</div>
+</td>
+<td class="py-3.5 px-4 font-code-md text-code-md text-right font-semibold text-on-surface">65 units</td>
+<td class="py-3.5 px-4">
+<!-- Fulfilled Green Status Pill -->
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0] font-label-xs text-label-xs font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-[#065F46]"></span>
+                  Fulfilled
+                </span>
+</td>
+<td class="py-3.5 px-4 font-body-sm text-body-sm text-on-surface-variant">
+<div class="flex flex-col">
+<span class="text-on-surface font-medium">Oct 24, 11:15</span>
+<span class="font-code-sm text-code-sm text-tertiary">SLA 2h · Dispatched</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center gap-1 font-code-sm text-code-sm px-2.5 py-1 rounded bg-surface-container text-on-surface font-medium border border-outline-variant">
+<span class="material-symbols-outlined text-tertiary text-[14px]">bolt</span>
+                  Auto-Allocated
+                </span>
+</td>
+</tr>
+<!-- Row 5: ORD-9811 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors group">
+<td class="py-3.5 px-4 font-code-md text-code-md font-semibold text-on-surface">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-on-surface-variant text-[16px] group-hover:text-primary">receipt</span>
+<span class="">ORD-9811</span>
+</div>
+</td>
+<td class="py-3.5 px-4 font-code-md text-code-md text-on-surface-variant">SKU-1042</td>
+<td class="py-3.5 px-4 font-body-md text-body-md font-medium text-on-surface">Organic Avocados Hass</td>
+<td class="py-3.5 px-4 font-body-sm text-body-sm text-on-surface">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[16px]">warehouse</span>
+<span class="">Micro-Fulfillment Center 12</span>
+</div>
+</td>
+<td class="py-3.5 px-4 font-code-md text-code-md text-right font-semibold text-on-surface">30 units</td>
+<td class="py-3.5 px-4">
+<!-- Staged for Dispatch Blue Status Pill -->
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#F0F9FF] text-[#075985] border border-[#BAE6FD] font-label-xs text-label-xs font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-[#075985]"></span>
+                  Staged for Dispatch
+                </span>
+</td>
+<td class="py-3.5 px-4 font-body-sm text-body-sm text-on-surface-variant">
+<div class="flex flex-col">
+<span class="text-on-surface font-medium">Oct 24, 10:50</span>
+<span class="font-code-sm text-code-sm text-secondary">SLA 3h · Ready for Courier</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center gap-1 font-code-sm text-code-sm px-2.5 py-1 rounded bg-[#FFFBEB] text-[#92400E] font-medium border border-[#FDE68A]">
+<span class="material-symbols-outlined text-[14px]">link</span>
+                  Linked to PO-2026-0891
+                </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Footer / Action Ribbon -->
+<div class="bg-surface-container-low/40 px-4 py-3 border-t border-outline-variant flex flex-wrap items-center justify-between gap-3 text-body-sm font-body-sm text-on-surface-variant">
+<div class="flex items-center gap-2 font-code-sm text-code-sm">
+<span class="material-symbols-outlined text-tertiary text-[18px]">verified_user</span>
+<span class="">Automated Outbound Allocation: <strong>Enabled with Dynamic Stockout Safeguard</strong></span>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1 rounded border border-outline-variant bg-surface-container-lowest text-on-surface font-label-xs text-label-xs font-semibold hover:bg-surface-container-low transition-all">Bulk Re-route</button>
+<button class="px-3 py-1 rounded bg-primary-container text-on-primary font-label-xs text-label-xs font-semibold hover:bg-primary transition-all">Trigger Autonomous Dispatch</button>
+</div>
+</div>
+</div>
+<!-- Contextual Autonomous Logic Banner -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-[18px]">hub</span>
+</div>
+<div>
+<h4 class="font-title-md text-title-md text-on-surface">Continuous Dynamic Allocation Model</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+            When local warehouse safety stock drops below 15%, client orders are automatically cross-docked or linked directly to verified inbound Purchase Orders to prevent SLA breaches.
+          </p>
+</div>
+</div>
+<a class="inline-flex items-center gap-1 font-label-xs text-label-xs font-semibold text-primary hover:underline shrink-0" href="#">
+        Review Stockout Rules
+        <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</a>
+</div>
+</main>
+<!-- Mobile Bottom Nav Shell (Responsive pivot per mandate) -->
+<nav class="md:hidden sticky bottom-0 z-50 bg-surface-container-lowest border-t border-outline-variant px-4 py-2 flex items-center justify-around shadow-lg">
+<a class="flex flex-col items-center gap-0.5 text-on-surface-variant font-label-xs text-[10px]" href="#">
+<span class="material-symbols-outlined text-[20px]">smart_toy</span>
+<span class="">Agent</span>
+</a>
+<a class="flex flex-col items-center gap-0.5 text-on-surface-variant font-label-xs text-[10px]" href="#">
+<span class="material-symbols-outlined text-[20px]">inventory</span>
+<span class="">Inventory</span>
+</a>
+<a class="flex flex-col items-center gap-0.5 text-on-surface-variant font-label-xs text-[10px]" href="#">
+<span class="material-symbols-outlined text-[20px]">shopping_cart</span>
+<span class="">POs</span>
+</a>
+<a class="flex flex-col items-center gap-0.5 text-primary font-semibold font-label-xs text-[10px]" href="#">
+<span class="material-symbols-outlined text-[20px]">receipt_long</span>
+<span class="">Orders</span>
+</a>
+<a class="flex flex-col items-center gap-0.5 text-on-surface-variant font-label-xs text-[10px]" href="#">
+<span class="material-symbols-outlined text-[20px]">rule</span>
+<span class="">Eval</span>
+</a>
+</nav>
+
+
+</body></html>

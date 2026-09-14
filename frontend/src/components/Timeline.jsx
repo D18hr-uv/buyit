@@ -1,15 +1,17 @@
 import { Badge } from "./Badge.jsx";
+import { Icon } from "./Icon.jsx";
 
+// icon + node-marker color per trace node type.
 const NODE_META = {
-  ingest: { icon: "📥", color: "bg-gray-400" },
-  agent_reason: { icon: "🤖", color: "bg-blue-500" },
-  guardrail: { icon: "🛡️", color: "bg-[#f0503c]" },
-  approval_gate: { icon: "🙋", color: "bg-amber-500" },
-  act: { icon: "⚡", color: "bg-purple-500" },
-  validate: { icon: "✅", color: "bg-emerald-500" },
-  replan: { icon: "🔁", color: "bg-orange-500" },
-  escalate: { icon: "🚨", color: "bg-rose-600" },
-  finalize: { icon: "🏁", color: "bg-gray-600" },
+  ingest: { icon: "inbox", color: "border-secondary text-secondary" },
+  agent_reason: { icon: "smart_toy", color: "border-primary text-primary" },
+  guardrail: { icon: "shield", color: "border-tertiary text-tertiary" },
+  approval_gate: { icon: "person_check", color: "border-[#F59E0B] text-[#92400E]" },
+  act: { icon: "bolt", color: "border-primary text-primary" },
+  validate: { icon: "check", color: "border-tertiary text-tertiary" },
+  replan: { icon: "sync", color: "border-[#F59E0B] text-[#92400E]" },
+  escalate: { icon: "priority_high", color: "border-primary text-primary" },
+  finalize: { icon: "flag", color: "border-on-surface text-on-surface" },
 };
 
 function DataDetails({ node, data }) {
@@ -18,23 +20,34 @@ function DataDetails({ node, data }) {
   if (node === "agent_reason") {
     const p = data.llm_proposed;
     return (
-      <div className="mt-2 space-y-2 text-xs">
-        <div className="flex flex-wrap gap-1">
-          {(data.tool_calls || []).map((t, i) => (
-            <span key={i} className="rounded bg-blue-50 px-1.5 py-0.5 font-mono text-blue-700">
-              {t}()
-            </span>
-          ))}
-        </div>
+      <div className="mt-2.5 space-y-2.5 text-body-sm">
+        {(data.tool_calls || []).length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {data.tool_calls.map((t, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center gap-1 rounded border border-outline-variant bg-surface-container px-2.5 py-1 font-code-sm text-code-sm text-on-surface"
+              >
+                <Icon name="terminal" className="text-[13px] text-on-surface-variant" />
+                {t}()
+              </span>
+            ))}
+          </div>
+        )}
         {p && (
-          <div className="rounded bg-blue-50 p-2 text-blue-800">
-            <span className="font-semibold">Model proposed:</span> {p.decision_type}
-            {p.qty ? ` · qty ${p.qty}` : ""}
-            {p.vendor_id ? ` · ${p.vendor_id}` : ""}
+          <div className="flex items-center justify-between rounded border border-primary/30 bg-surface-container-lowest p-2.5">
+            <span className="text-body-sm font-body-sm text-on-surface">
+              Model proposed:{" "}
+              <strong className="font-semibold text-primary">
+                {p.decision_type}
+                {p.qty ? ` · qty ${p.qty}` : ""}
+                {p.vendor_id ? ` · ${p.vendor_id}` : ""}
+              </strong>
+            </span>
           </div>
         )}
         {data.retrieved_rules?.length > 0 && (
-          <details className="text-gray-600">
+          <details className="text-body-sm text-on-surface-variant">
             <summary className="cursor-pointer font-medium">
               RAG: {data.retrieved_rules.length} business rules retrieved
             </summary>
@@ -49,61 +62,50 @@ function DataDetails({ node, data }) {
     );
   }
 
-  if (node === "guardrail") {
+  if (node === "guardrail" || node === "analyze") {
     const s = data.analysis_summary || {};
     const checks = data.constraints?.checks || [];
     return (
-      <div className="mt-2 space-y-2 text-xs">
+      <div className="mt-2.5 space-y-2.5 text-body-sm">
         {data.overridden && (
-          <div className="rounded bg-rose-50 px-2 py-1 font-medium text-rose-700">
+          <div className="rounded bg-error-container px-2 py-1 font-medium text-on-error-container">
             ⚠ Guardrail overrode the model's proposal
           </div>
         )}
-        <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 font-mono text-gray-700 sm:grid-cols-3">
-          {Object.entries(s).map(([k, v]) => (
-            <div key={k}>
-              <span className="text-gray-400">{k}:</span> {String(v)}
-            </div>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {checks.map((c) => (
-            <Badge key={c.name} ok={c.passed}>
-              {c.name}
-            </Badge>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (node === "analyze") {
-    const s = data.analysis_summary || {};
-    const checks = data.constraints?.checks || [];
-    return (
-      <div className="mt-2 space-y-2 text-xs">
-        <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 font-mono text-gray-700 sm:grid-cols-3">
-          {Object.entries(s).map(([k, v]) => (
-            <div key={k}>
-              <span className="text-gray-400">{k}:</span> {String(v)}
-            </div>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {checks.map((c) => (
-            <Badge key={c.name} ok={c.passed}>
-              {c.name}
-            </Badge>
-          ))}
-        </div>
+        {Object.keys(s).length > 0 && (
+          <div className="grid grid-cols-2 gap-2 pt-0.5 sm:grid-cols-4">
+            {Object.entries(s).map(([k, v]) => (
+              <div
+                key={k}
+                className="rounded border border-outline-variant bg-surface-container-lowest p-2"
+              >
+                <span className="block text-label-xs font-label-xs text-on-surface-variant">
+                  {k}
+                </span>
+                <span className="font-code-md text-code-md font-bold text-on-surface">
+                  {String(v)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        {checks.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {checks.map((c) => (
+              <Badge key={c.name} ok={c.passed}>
+                {c.name}
+              </Badge>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <details className="mt-1 text-xs text-gray-500">
+    <details className="mt-1 text-body-sm text-on-surface-variant">
       <summary className="cursor-pointer">details</summary>
-      <pre className="mt-1 overflow-x-auto rounded bg-gray-50 p-2 text-[11px]">
+      <pre className="mt-1 overflow-x-auto rounded bg-surface-container-low p-2 font-code-sm text-code-sm">
         {JSON.stringify(data, null, 2)}
       </pre>
     </details>
@@ -113,32 +115,36 @@ function DataDetails({ node, data }) {
 export function Timeline({ trace }) {
   if (!trace?.length) return null;
   return (
-    <ol className="relative space-y-1">
+    <div className="relative space-y-7 pl-6 before:absolute before:bottom-2 before:left-3 before:top-2 before:w-[2px] before:bg-outline-variant/60">
       {trace.map((ev, i) => {
-        const meta = NODE_META[ev.node] || { icon: "•", color: "bg-gray-400" };
+        const meta = NODE_META[ev.node] || {
+          icon: "circle",
+          color: "border-outline text-on-surface-variant",
+        };
         return (
-          <li key={i} className="flex gap-3">
-            <div className="flex flex-col items-center">
-              <div
-                className={`flex h-7 w-7 items-center justify-center rounded-full text-sm ${meta.color} text-white`}
-              >
-                {meta.icon}
-              </div>
-              {i < trace.length - 1 && <div className="w-px flex-1 bg-gray-200" />}
+          <div key={i} className="group relative flex items-start gap-4">
+            <div
+              className={`absolute -left-6 mt-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 bg-surface-container-lowest shadow-sm ${meta.color}`}
+            >
+              <Icon name={meta.icon} className="text-[14px]" />
             </div>
-            <div className="flex-1 pb-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-gray-900">{ev.title}</span>
-                <span className="font-mono text-[10px] uppercase tracking-wide text-gray-400">
+            <div className="flex-1 rounded-lg border border-outline-variant/40 bg-surface-container-low/40 p-3.5">
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <span className="text-title-md font-title-md text-on-surface">
+                  {ev.title}
+                </span>
+                <span className="font-code-sm text-code-sm uppercase tracking-wide text-on-surface-variant">
                   {ev.node}
                 </span>
               </div>
-              <p className="text-sm text-gray-600">{ev.summary}</p>
+              <p className="text-body-sm font-body-sm text-on-surface-variant">
+                {ev.summary}
+              </p>
               <DataDetails node={ev.node} data={ev.data} />
             </div>
-          </li>
+          </div>
         );
       })}
-    </ol>
+    </div>
   );
 }

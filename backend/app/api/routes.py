@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException
@@ -17,11 +18,13 @@ from app.db.models import (
     Product,
     ReorderLog,
     Vendor,
+    VendorProduct,
     VendorPurchaseOrder,
 )
 from app.db.session import session_scope
 from app.eval.runner import run_eval
 from app.presets import PRESETS
+from app.tools.actions import create_vendor_po
 
 router = APIRouter()
 settings = get_settings()
@@ -35,6 +38,20 @@ class RunRequest(BaseModel):
 class ApprovalRequest(BaseModel):
     approved: bool
     edited_qty: Optional[int] = None
+
+
+class CreatePORequest(BaseModel):
+    sku: str
+    vendor_id: str
+    qty: int
+    unit_price: Optional[float] = None
+    expected_delivery_days: Optional[int] = None
+
+
+class CreateOrderRequest(BaseModel):
+    sku: str
+    qty: int
+    status: str = "open"
 
 
 @router.get("/health")
@@ -100,6 +117,32 @@ def purchase_orders():
              "order_value": p.qty * p.unit_price} for p in pos]}
 
 
+@router.post("/purchase-orders")
+def create_purchase_order(req: CreatePORequest):
+    if req.qty <= 0:
+        raise HTTPException(400, "qty must be positive")
+    with session_scope() as s:
+        if not s.get(Product, req.sku):
+            raise HTTPException(404, f"unknown SKU {req.sku}")
+        if not s.get(Vendor, req.vendor_id):
+            raise HTTPException(404, f"unknown vendor {req.vendor_id}")
+
+        vp = s.scalar(
+            select(VendorProduct).where(
+                VendorProduct.sku == req.sku, VendorProduct.vendor_id == req.vendor_id))
+        unit_price = req.unit_price
+        if unit_price is None:
+            product = s.get(Product, req.sku)
+            unit_price = vp.unit_price if vp else product.unit_cost
+        delivery = req.expected_delivery_days
+        if delivery is None:
+            delivery = vp.lead_time_days if vp else 7
+
+        po = create_vendor_po(s, sku=req.sku, vendor_id=req.vendor_id, qty=req.qty,
+                              unit_price=unit_price, expected_delivery_days=delivery)
+        return {"purchase_order": po}
+
+
 @router.get("/client-orders")
 def client_orders():
     with session_scope() as s:
@@ -108,6 +151,23 @@ def client_orders():
         return {"client_orders": [
             {"order_id": o.order_id, "sku": o.sku, "qty": o.qty, "status": o.status,
              "created_at": o.created_at.isoformat()} for o in rows]}
+
+
+@router.post("/client-orders")
+def create_client_order(req: CreateOrderRequest):
+    if req.qty <= 0:
+        raise HTTPException(400, "qty must be positive")
+    with session_scope() as s:
+        if not s.get(Product, req.sku):
+            raise HTTPException(404, f"unknown SKU {req.sku}")
+        order = ClientOrder(
+            order_id="CO-" + uuid.uuid4().hex[:8].upper(),
+            sku=req.sku, qty=req.qty, status=req.status)
+        s.add(order)
+        s.flush()
+        return {"client_order": {
+            "order_id": order.order_id, "sku": order.sku, "qty": order.qty,
+            "status": order.status, "created_at": order.created_at.isoformat()}}
 
 
 @router.get("/budgets")
@@ -126,7 +186,8 @@ def logs():
             {"run_id": r.run_id, "sku": r.sku, "scenario": r.scenario, "trigger": r.trigger,
              "decision_type": r.decision_type, "status": r.status,
              "created_at": r.created_at.isoformat(),
-             "result": json.loads(r.result_json)} for r in rows]}
+             "result": json.loads(r.result_json),
+             "trace": json.loads(r.trace_json)} for r in rows]}
 
 
 @router.post("/eval/run")
