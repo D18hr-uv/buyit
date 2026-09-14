@@ -95,6 +95,15 @@ export default function App() {
     loadRefData(); // keep SKU/category lists fresh for the other create forms
   }
 
+  async function closePo(po) {
+    try {
+      await api.closePurchaseOrder(po.po_id);
+      setRefreshTick((t) => t + 1);
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
   async function launch(preset) {
     setBusy(true); setError(null); setRun(null); setActivePreset(preset.id);
     try {
@@ -420,6 +429,7 @@ export default function App() {
           <POTable
             pos={data.pos}
             onReceive={setReceivingPo}
+            onClosePo={closePo}
             action={
               <button
                 onClick={() => setCreating("po")}

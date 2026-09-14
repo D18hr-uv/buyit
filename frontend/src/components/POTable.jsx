@@ -9,7 +9,7 @@ const STATUS_TONE = {
   cancelled: "gray",
 };
 
-export function POTable({ pos, action, onReceive }) {
+export function POTable({ pos, action, onReceive, onClosePo }) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -65,17 +65,27 @@ export function POTable({ pos, action, onReceive }) {
                       <Pill tone={STATUS_TONE[p.status] || "gray"}>{p.status}</Pill>
                     </td>
                     <td className="px-4 py-3.5 text-center">
-                      {p.confirmed_qty < p.qty && p.status !== "cancelled" ? (
-                        <button
-                          onClick={() => onReceive?.(p)}
-                          className="inline-flex items-center gap-1 rounded border border-outline-variant bg-surface-container px-2.5 py-1 text-label-xs font-label-xs text-on-surface transition-colors hover:bg-surface-container-high"
-                        >
-                          <Icon name="inventory" className="text-[14px]" />
-                          Receive
-                        </button>
+                      {p.confirmed_qty < p.qty && !["cancelled", "closed"].includes(p.status) ? (
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => onReceive?.(p)}
+                            className="inline-flex items-center gap-1 rounded border border-outline-variant bg-surface-container px-2.5 py-1 text-label-xs font-label-xs text-on-surface transition-colors hover:bg-surface-container-high"
+                          >
+                            <Icon name="inventory" className="text-[14px]" />
+                            Receive
+                          </button>
+                          <button
+                            onClick={() => onClosePo?.(p)}
+                            title="Close this PO so it accepts no further receiving"
+                            className="inline-flex items-center gap-1 rounded border border-outline-variant bg-surface-container-lowest px-2.5 py-1 text-label-xs font-label-xs text-on-surface-variant transition-colors hover:bg-surface-container-low"
+                          >
+                            <Icon name="block" className="text-[14px]" />
+                            Close
+                          </button>
+                        </div>
                       ) : (
                         <span className="text-label-xs font-label-xs text-on-surface-variant">
-                          —
+                          {p.status === "closed" ? "closed" : "—"}
                         </span>
                       )}
                     </td>

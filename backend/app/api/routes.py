@@ -24,7 +24,7 @@ from app.db.models import (
 from app.db.session import session_scope
 from app.eval.runner import run_eval
 from app.presets import PRESETS
-from app.tools.actions import create_vendor_po, receive_into_inventory
+from app.tools.actions import close_po, create_vendor_po, receive_into_inventory
 
 router = APIRouter()
 settings = get_settings()
@@ -190,6 +190,16 @@ def receive_purchase_order(po_id: str, req: ReceivePORequest):
         except ValueError as e:
             msg = str(e)
             raise HTTPException(404 if "not found" in msg else 400, msg)
+        return {"purchase_order": po}
+
+
+@router.post("/purchase-orders/{po_id}/close")
+def close_purchase_order(po_id: str):
+    with session_scope() as s:
+        try:
+            po = close_po(s, po_id)
+        except ValueError as e:
+            raise HTTPException(404, str(e))
         return {"purchase_order": po}
 
 

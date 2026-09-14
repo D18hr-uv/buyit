@@ -96,6 +96,22 @@ def test_receive_po_rejects_reduction_and_overflow_and_missing():
     ).status_code == 404
 
 
+def test_close_po_blocks_further_receiving():
+    po = client.post(
+        "/purchase-orders", json={"sku": SKU, "vendor_id": VENDOR, "qty": 40, "confirmed_qty": 10}
+    ).json()["purchase_order"]
+
+    res = client.post(f"/purchase-orders/{po['po_id']}/close")
+    assert res.status_code == 200
+    assert res.json()["purchase_order"]["status"] == "closed"
+
+    # a closed PO can no longer be received
+    assert client.post(
+        f"/purchase-orders/{po['po_id']}/receive", json={"confirmed_qty": 30}
+    ).status_code == 400
+    assert client.post("/purchase-orders/PO-NOPE/close").status_code == 404
+
+
 def test_create_purchase_order_validates_input():
     assert client.post(
         "/purchase-orders", json={"sku": SKU, "vendor_id": VENDOR, "qty": 0}

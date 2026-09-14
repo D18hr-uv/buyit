@@ -31,6 +31,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ confirmed_qty: confirmedQty }),
     }),
+  closePurchaseOrder: (poId) =>
+    req(`/purchase-orders/${poId}/close`, { method: "POST" }),
   clientOrders: () => req("/client-orders"),
   createClientOrder: (body) =>
     req("/client-orders", { method: "POST", body: JSON.stringify(body) }),

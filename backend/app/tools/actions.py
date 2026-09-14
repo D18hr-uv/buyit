@@ -29,6 +29,8 @@ def receive_into_inventory(session: Session, po_id: str, new_confirmed_qty: int)
     po = session.get(VendorPurchaseOrder, po_id)
     if not po:
         raise ValueError(f"PO {po_id} not found")
+    if po.status in ("closed", "cancelled"):
+        raise ValueError(f"PO {po_id} is {po.status} and cannot receive further")
     if new_confirmed_qty < po.confirmed_qty:
         raise ValueError("confirmed_qty cannot be reduced below what is already received")
     if new_confirmed_qty > po.qty:
@@ -59,6 +61,16 @@ def create_vendor_po(session: Session, sku: str, vendor_id: str, qty: int,
         if budget:
             budget.spent += qty * unit_price
 
+    session.flush()
+    return _po_dict(po)
+
+
+def close_po(session: Session, po_id: str) -> dict:
+    """Finalize a PO so it accepts no further receiving."""
+    po = session.get(VendorPurchaseOrder, po_id)
+    if not po:
+        raise ValueError(f"PO {po_id} not found")
+    po.status = "closed"
     session.flush()
     return _po_dict(po)
 
