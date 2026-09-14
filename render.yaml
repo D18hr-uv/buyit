@@ -1,0 +1,23 @@
+# Render Blueprint — backend API (Docker). Frontend deploys separately on Vercel.
+# Create these values in the Render dashboard (or `render.yaml` env sync) at deploy time.
+services:
+  - type: web
+    name: buyit-api
+    runtime: docker
+    rootDir: backend
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # Neon Postgres connection string:
+      #   postgresql+psycopg://USER:PASSWORD@HOST/DB?sslmode=require
+      - key: DATABASE_URL
+        sync: false
+      # Optional — leave blank to run in deterministic stub mode.
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: LLM_PROVIDER
+        value: openai
+      # Comma-separated allowlist — set to your Vercel URL, e.g. https://buyit.vercel.app
+      - key: CORS_ORIGINS
+        sync: false

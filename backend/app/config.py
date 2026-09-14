@@ -24,10 +24,21 @@ class Settings(BaseSettings):
     approval_value_threshold: float = 50000.0
     min_supplier_reliability: float = 0.7
 
+    # CORS: "*" (any origin) for local dev, or a comma-separated allowlist in prod,
+    # e.g. "https://buyit.vercel.app,https://www.example.com".
+    cors_origins: str = "*"
+
     @property
     def use_real_llm(self) -> bool:
         """Only use the real provider when a key is present and stub not forced."""
         return self.llm_provider == "openai" and bool(self.openai_api_key.strip())
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        raw = self.cors_origins.strip()
+        if raw in ("", "*"):
+            return ["*"]
+        return [o.strip() for o in raw.split(",") if o.strip()]
 
 
 @lru_cache

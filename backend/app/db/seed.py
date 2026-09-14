@@ -29,6 +29,24 @@ def reset_schema() -> None:
     Base.metadata.create_all(engine)
 
 
+def ensure_seeded() -> None:
+    """Idempotent, non-destructive startup seed for deployments.
+
+    Creates tables if missing and seeds ONLY when the catalog is empty, so a
+    restart never wipes records created through the app. Use `seed()` (which
+    drops everything) only for a deliberate demo reset.
+
+    Run: `python -m app.db.ensure_seed`
+    """
+    Base.metadata.create_all(engine)
+    with session_scope() as s:
+        already = s.query(Product).first() is not None
+    if already:
+        print(f"Database already populated ({engine.dialect.name}); skipping seed.")
+        return
+    seed()
+
+
 def _orders(sku: str, last7: int, prev7: int) -> list[ClientOrder]:
     """Two orders in the last 7 days and two in the prior 7 days, summing to the targets."""
     out = []

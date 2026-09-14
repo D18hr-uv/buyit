@@ -211,6 +211,32 @@ reports the provider actually in use (`openai` vs `stub`).
 
 ---
 
+## Deploy (Render + Vercel + Neon)
+
+Three pieces: managed Postgres (Neon), the API on Render, the static frontend on Vercel.
+
+1. **Database — Neon.** Create a project and copy the connection string as
+   `postgresql+psycopg://USER:PASSWORD@HOST/DB?sslmode=require`.
+
+2. **Backend — Render.** New **Web Service** from this repo (root `backend/`, Docker).
+   The included [`render.yaml`](render.yaml) declares it. Set env vars:
+   - `DATABASE_URL` — the Neon string
+   - `OPENAI_API_KEY` — optional (blank ⇒ stub mode)
+   - `CORS_ORIGINS` — your Vercel URL, e.g. `https://buyit.vercel.app`
+
+   The container runs `python -m app.db.ensure_seed` (seeds **only if the DB is empty**, so
+   restarts never wipe live data) then `uvicorn` on `$PORT`. Health check: `/health`.
+
+3. **Frontend — Vercel.** Import the repo, set **Root Directory** to `frontend/`
+   (config in [`frontend/vercel.json`](frontend/vercel.json)). Add build-time env
+   `VITE_API_URL=https://<your-render-app>.onrender.com` — it is baked into the bundle,
+   so set it **before** the build.
+
+Then set the backend's `CORS_ORIGINS` to the Vercel domain and redeploy. To reset demo data
+in a running deployment, use the in-app **Reset demo data** button (calls `POST /reset`).
+
+---
+
 ## Project structure
 
 ```
