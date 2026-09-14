@@ -17,10 +17,11 @@ from app.eval.scenarios import EVAL_SCENARIOS
 
 
 def _tool_calls_in_trace(trace: List[Dict[str, Any]]) -> List[str]:
+    calls: List[str] = []
     for ev in trace:
-        if ev.get("node") == "gather_context":
-            return ev.get("data", {}).get("tool_calls", [])
-    return []
+        if ev.get("node") == "agent_reason":
+            calls += ev.get("data", {}).get("tool_calls", [])
+    return calls
 
 
 def _score_one(sc: Dict[str, Any]) -> Dict[str, Any]:

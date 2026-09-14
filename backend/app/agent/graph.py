@@ -1,14 +1,17 @@
 """LangGraph StateGraph wiring the purchasing agent.
 
 Flow:
-    ingest -> gather_context -> analyze -> decide
-    decide --> finalize            (reject / investigate)
-    decide --> escalate            (infeasible)
-    decide --> approval_gate --> act   (accept / modify / source_alternate / confirm_existing)
+    ingest -> agent_reason -> guardrail
+    agent_reason = the LLM investigates via tool calls and proposes a decision
+    guardrail    = deterministic recompute + validate/override the proposal
+
+    guardrail --> finalize            (reject / investigate)
+    guardrail --> escalate            (infeasible)
+    guardrail --> approval_gate --> act   (accept / modify / source_alternate / confirm_existing)
     act -> validate
-    validate --> finalize          (outcome acceptable)
-    validate --> replan -> analyze (discrepancy, retries remain)   <-- the feedback loop
-    validate --> escalate          (discrepancy, no retries)
+    validate --> finalize             (outcome acceptable)
+    validate --> replan -> agent_reason   (discrepancy, retries remain)  <-- feedback loop
+    validate --> escalate             (discrepancy, no retries)
     escalate -> finalize
 
 `interrupt_before=['act']` lets the runner pause for human-in-the-loop approval.
@@ -25,7 +28,7 @@ from app.config import get_settings
 settings = get_settings()
 
 
-def _route_after_decide(state: AgentState) -> str:
+def _route_after_guardrail(state: AgentState) -> str:
     dtype = state["decision"]["type"]
     if dtype in ("reject", "investigate"):
         return "finalize"
@@ -46,9 +49,8 @@ def build_graph():
     g = StateGraph(AgentState)
 
     g.add_node("ingest", nodes.ingest)
-    g.add_node("gather_context", nodes.gather_context)
-    g.add_node("analyze", nodes.analyze)
-    g.add_node("decide", nodes.decide)
+    g.add_node("agent_reason", nodes.agent_reason)
+    g.add_node("guardrail", nodes.guardrail)
     g.add_node("approval_gate", nodes.approval_gate)
     g.add_node("act", nodes.act)
     g.add_node("validate", nodes.validate)
@@ -57,24 +59,22 @@ def build_graph():
     g.add_node("finalize", nodes.finalize)
 
     g.add_edge(START, "ingest")
-    g.add_edge("ingest", "gather_context")
-    g.add_edge("gather_context", "analyze")
-    g.add_edge("analyze", "decide")
-    g.add_conditional_edges("decide", _route_after_decide,
+    g.add_edge("ingest", "agent_reason")
+    g.add_edge("agent_reason", "guardrail")
+    g.add_conditional_edges("guardrail", _route_after_guardrail,
                             {"finalize": "finalize", "escalate": "escalate",
                              "approval_gate": "approval_gate"})
     g.add_edge("approval_gate", "act")
     g.add_edge("act", "validate")
     g.add_conditional_edges("validate", _route_after_validate,
                             {"finalize": "finalize", "replan": "replan", "escalate": "escalate"})
-    g.add_edge("replan", "analyze")
+    g.add_edge("replan", "agent_reason")
     g.add_edge("escalate", "finalize")
     g.add_edge("finalize", END)
 
     return g.compile(checkpointer=MemorySaver(), interrupt_before=["act"])
 
 
-# Singleton compiled graph (shared MemorySaver enables HITL pause/resume within the process).
 _GRAPH = None
 
 

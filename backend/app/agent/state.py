@@ -11,6 +11,7 @@ class AgentState(TypedDict, total=False):
     situation: Dict[str, Any]           # input: sku, node_id, recommended_qty, po_id, ...
     facts: Dict[str, Any]               # gathered context from tools
     retrieved_rules: List[str]          # RAG SOPs
+    proposed_decision: Dict[str, Any]   # the LLM's proposed decision (pre-guardrail)
     analysis: Dict[str, Any]            # computed numbers + constraint results
     decision: Dict[str, Any]            # {type, qty, supplier_id, rationale, confidence, factors}
     needs_human: bool

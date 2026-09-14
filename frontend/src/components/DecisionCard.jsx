@@ -24,9 +24,10 @@ export function DecisionCard({ run }) {
           {d.qty > 0 && <span className="text-sm font-semibold">qty: {d.qty}</span>}
           <span className="text-xs text-gray-500">confidence: {d.confidence}</span>
         </div>
-        {run.iteration > 0 && (
-          <Pill tone="orange">re-planned ×{run.iteration}</Pill>
-        )}
+        <div className="flex items-center gap-2">
+          {d.overridden && <Pill tone="coral">guardrail override</Pill>}
+          {run.iteration > 0 && <Pill tone="orange">re-planned ×{run.iteration}</Pill>}
+        </div>
       </div>
 
       <p className="mt-3 text-sm leading-relaxed text-gray-800">{d.rationale}</p>

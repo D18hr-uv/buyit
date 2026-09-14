@@ -51,6 +51,27 @@ class OpenAIChat:
         )
         return resp.choices[0].message.content or ""
 
+    def call_tools(self, messages: list, tools: list) -> dict:
+        """One turn of a tool-calling loop. Returns {content, tool_calls:[{id,name,arguments}]}."""
+        import json as _json
+
+        resp = self._client.chat.completions.create(
+            model=self._model,
+            messages=messages,
+            tools=tools,
+            tool_choice="auto",
+            temperature=0.1,
+        )
+        msg = resp.choices[0].message
+        tool_calls = []
+        for tc in (msg.tool_calls or []):
+            try:
+                args = _json.loads(tc.function.arguments or "{}")
+            except Exception:
+                args = {}
+            tool_calls.append({"id": tc.id, "name": tc.function.name, "arguments": args})
+        return {"content": msg.content or "", "tool_calls": tool_calls}
+
 
 def get_chat() -> "StubChat | OpenAIChat":
     if settings.use_real_llm:
