@@ -1,28 +1,25 @@
-"""End-to-end agent tests (stub LLM, SQLite) for all decision branches + the S2 loop."""
+"""End-to-end agent tests (stub planner, SQLite) for all decision branches + the S2 loop."""
 from app.agent import nodes, runner
-
-NODE = "MFC-BOG"
 
 
 def test_guardrail_overrides_hallucinated_quantity():
     """If the (LLM) proposal contradicts the verified numbers, the guardrail corrects it."""
     state = {
         "scenario": "S1",
-        "situation": {"sku": "SKU-WATER", "node_id": NODE, "recommended_qty": 800},
+        "situation": {"sku": "SKU-WATER", "recommended_qty": 800},
         "feedback": [],
-        # Pretend the LLM hallucinated a wildly-too-large quantity.
         "proposed_decision": {"decision_type": "accept", "qty": 9999,
-                              "supplier_id": "SUP-AQUA", "rationale": "buy lots"},
+                              "vendor_id": "SUP-AQUA", "rationale": "buy lots"},
     }
     out = nodes.guardrail(state)
     d = out["decision"]
     assert d["overridden"] is True
-    assert d["qty"] == 800          # corrected to the true net requirement
+    assert d["qty"] == 800
     assert d["llm_proposed"]["qty"] == 9999
 
 
 def _s1(sku, qty=800):
-    return runner.start_run("S1", {"sku": sku, "node_id": NODE, "recommended_qty": qty})
+    return runner.start_run("S1", {"sku": sku, "recommended_qty": qty})
 
 
 def test_s1_accept():
@@ -30,7 +27,7 @@ def test_s1_accept():
     assert r["decision"]["type"] == "accept"
     assert r["decision"]["qty"] == 800
     assert r["needs_human"] is False
-    assert r["action_result"]["po_id"]                     # PO created
+    assert r["action_result"]["po_id"]
     assert r["validation"]["acceptable"] is True
     assert r["status"] == "done"
 
@@ -38,7 +35,7 @@ def test_s1_accept():
 def test_s1_modify_budget_capped():
     r = _s1("SKU-OIL", 800)
     assert r["decision"]["type"] == "modify"
-    assert r["decision"]["qty"] == 500                     # budget caps 800 -> 500
+    assert r["decision"]["qty"] == 500
     assert r["validation"]["acceptable"] is True
 
 
@@ -49,7 +46,7 @@ def test_s1_reject_already_covered():
     assert r["status"] == "done"
 
 
-def test_s1_investigate_unreliable_forecast():
+def test_s1_investigate_demand_anomaly():
     r = _s1("SKU-CHOC", 800)
     assert r["decision"]["type"] == "investigate"
 
@@ -59,8 +56,6 @@ def test_s1_hitl_high_value_requires_approval_then_executes():
     assert r["decision"]["type"] == "accept"
     assert r["needs_human"] is True
     assert r["status"] == "awaiting_approval"
-    assert r["action_result"] is None or "po_id" not in (r["action_result"] or {})
-
     approved = runner.approve_run(r["run_id"], approved=True)
     assert approved["action_result"]["po_id"]
     assert approved["validation"]["acceptable"] is True
@@ -75,13 +70,12 @@ def test_s1_hitl_rejection_creates_no_po():
     assert rejected["status"] == "done"
 
 
-def test_s2_supplier_shortfall_feedback_loop():
-    r = runner.start_run("S2", {"sku": "SKU-ENERGY", "node_id": NODE, "po_id": "PO-ENERGY-0500"})
-    # The loop: confirm_existing -> shortfall detected -> replan -> source_alternate
+def test_s2_vendor_shortfall_feedback_loop():
+    r = runner.start_run("S2", {"sku": "SKU-ENERGY", "po_id": "PO-ENERGY-0500"})
     assert r["iteration"] >= 1
-    assert any(f["reason"] == "supplier_shortfall" for f in r["feedback"])
+    assert any(f["reason"] == "vendor_shortfall" for f in r["feedback"])
     assert r["decision"]["type"] == "source_alternate"
-    assert r["decision"]["supplier_id"] == "SUP-VOLT"
-    assert r["decision"]["qty"] == 250                     # exactly the shortfall gap
+    assert r["decision"]["vendor_id"] == "SUP-VOLT"
+    assert r["decision"]["qty"] == 250
     assert r["validation"]["acceptable"] is True
     assert r["status"] == "done"

@@ -30,7 +30,7 @@ function DataDetails({ node, data }) {
           <div className="rounded bg-blue-50 p-2 text-blue-800">
             <span className="font-semibold">Model proposed:</span> {p.decision_type}
             {p.qty ? ` · qty ${p.qty}` : ""}
-            {p.supplier_id ? ` · ${p.supplier_id}` : ""}
+            {p.vendor_id ? ` · ${p.vendor_id}` : ""}
           </div>
         )}
         {data.retrieved_rules?.length > 0 && (

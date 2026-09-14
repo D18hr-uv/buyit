@@ -47,7 +47,7 @@ export function DecisionCard({ run }) {
         <div className="mt-3 rounded-lg bg-gray-50 p-3 text-xs">
           <div className="font-semibold text-gray-700">Action taken</div>
           <div className="mt-1 font-mono text-gray-600">
-            PO {action.po_id} — {action.qty} × {action.sku} from {action.supplier_id} @{" "}
+            PO {action.po_id} — {action.qty} × {action.sku} from {action.vendor_id} @{" "}
             {action.unit_price} (value {Math.round(action.order_value)})
           </div>
         </div>

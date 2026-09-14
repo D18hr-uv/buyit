@@ -62,7 +62,7 @@ def decide_purchase(
     final_qty = base_qty
     if final_qty > constraints.max_feasible_qty:
         final_qty = constraints.max_feasible_qty
-        capped_by = [v for v in constraints.violations if v in ("budget", "storage", "supplier_capacity")]
+        capped_by = [v for v in constraints.violations if v in ("budget", "vendor_capacity")]
         factors.append(f"Capped to {final_qty} by constraint(s): {', '.join(capped_by) or 'capacity'}.")
 
     # 5. Minimum order quantity

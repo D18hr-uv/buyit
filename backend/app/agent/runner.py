@@ -7,7 +7,7 @@ import uuid
 from typing import Any, Dict, Optional
 
 from app.agent.graph import get_graph
-from app.db.models import AgentRun
+from app.db.models import ReorderLog
 from app.db.session import session_scope
 
 _MAX_STEPS = 30  # safety backstop against runaway resume loops
@@ -42,11 +42,16 @@ def _drive(run_id: str) -> Dict[str, Any]:
 def _persist(values: Dict[str, Any]) -> None:
     run_id = values["run_id"]
     with session_scope() as s:
-        run = s.get(AgentRun, run_id)
+        run = s.get(ReorderLog, run_id)
         if not run:
-            run = AgentRun(run_id=run_id, scenario=values.get("scenario", "S1"))
+            run = ReorderLog(run_id=run_id, scenario=values.get("scenario", "S1"))
             s.add(run)
+        run.sku = values.get("situation", {}).get("sku", "")
+        run.scenario = values.get("scenario", "S1")
+        run.trigger = "recommendation_review" if values.get("scenario") == "S1" \
+            else "vendor_shortfall"
         run.status = values.get("status", "running")
+        run.decision_type = (values.get("decision") or {}).get("type", "")
         run.situation_json = json.dumps(values.get("situation", {}))
         run.trace_json = json.dumps(values.get("trace", []))
         run.result_json = json.dumps({
@@ -102,7 +107,7 @@ def approve_run(run_id: str, approved: bool, edited_qty: Optional[int] = None) -
 
 def get_run(run_id: str) -> Optional[Dict[str, Any]]:
     with session_scope() as s:
-        run = s.get(AgentRun, run_id)
+        run = s.get(ReorderLog, run_id)
         if not run:
             return None
         return {

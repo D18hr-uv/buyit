@@ -19,7 +19,12 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ approved, edited_qty: editedQty ?? null }),
     }),
+  inventory: () => req("/inventory"),
+  vendors: () => req("/vendors"),
   purchaseOrders: () => req("/purchase-orders"),
+  clientOrders: () => req("/client-orders"),
+  budgets: () => req("/budgets"),
+  logs: () => req("/logs"),
   runEval: () => req("/eval/run", { method: "POST" }),
   reset: () => req("/reset", { method: "POST" }),
 };

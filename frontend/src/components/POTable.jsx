@@ -17,7 +17,7 @@ export function POTable({ pos }) {
           <tr>
             <th className="px-3 py-2">PO</th>
             <th className="px-3 py-2">SKU</th>
-            <th className="px-3 py-2">Supplier</th>
+            <th className="px-3 py-2">Vendor</th>
             <th className="px-3 py-2">Qty</th>
             <th className="px-3 py-2">Confirmed</th>
             <th className="px-3 py-2">Value</th>
@@ -29,7 +29,7 @@ export function POTable({ pos }) {
             <tr key={p.po_id} className="hover:bg-gray-50">
               <td className="px-3 py-2 font-mono text-xs">{p.po_id}</td>
               <td className="px-3 py-2">{p.sku}</td>
-              <td className="px-3 py-2">{p.supplier_id}</td>
+              <td className="px-3 py-2">{p.vendor_id}</td>
               <td className="px-3 py-2">{p.qty}</td>
               <td className="px-3 py-2">{p.confirmed_qty}</td>
               <td className="px-3 py-2">{Math.round(p.order_value)}</td>

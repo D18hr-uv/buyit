@@ -15,9 +15,9 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
     embedding_model: str = "text-embedding-3-small"
 
-    # Data layer. Defaults to a local SQLite file so tests / eval run with no infra.
+    # Data layer. Defaults to a local SQLite file so tests run with no infra;
+    # the app uses a PostgreSQL (Neon) URL from .env.
     database_url: str = "sqlite:///./buyit.db"
-    redis_url: str = "redis://localhost:6379/0"
 
     # Guardrails
     max_agent_iters: int = 3

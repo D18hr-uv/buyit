@@ -1,53 +1,59 @@
-# AI Purchasing Agent
+# AI Purchasing Agent — Inventory Management
 
-A full-stack AI agent that assists a quick-commerce buyer: it takes a purchasing
-situation, **investigates** the relevant data, **decides** what to do, **acts** (creates or
-modifies purchase orders), and — most importantly — **validates the outcome and re-plans
-when reality differs from expectation**.
+A lean inventory-management application with an **AI purchasing agent** at its core. Given a
+reorder situation, the agent **investigates** the data, **decides** what to do, **acts**
+(creates/modifies vendor purchase orders), and **validates the outcome** — re-planning when
+reality differs from expectation. Every run is stored in a reorder/agent log.
 
 It is not a chatbot. It is a system that makes, executes, and validates purchasing
-decisions, with guardrails and human-in-the-loop approval.
+decisions, with guardrails and human-in-the-loop approval, backed by a real cloud Postgres.
 
-> Built for the Rappi "AI Buyer Agent" assignment. The stack mirrors the Rappi Fullstack
-> Engineer JD: **Python + FastAPI**, **LangGraph** agent orchestration, **RAG on
-> PostgreSQL + pgvector**, **Redis**-ready, **React** dashboard, **Docker Compose**.
-
----
-
-## Table of contents
-- [What it does](#what-it-does)
-- [Architecture](#architecture)
-- [User / agent flow](#user--agent-flow)
-- [How decisions are made](#how-decisions-are-made)
-- [The feedback loop (validation)](#the-feedback-loop-validation)
-- [Guardrails & human-in-the-loop](#guardrails--human-in-the-loop)
-- [Scenarios implemented](#scenarios-implemented)
-- [Evaluation approach](#evaluation-approach)
-- [Run it](#run-it)
-- [Project structure](#project-structure)
-- [Design notes & trade-offs](#design-notes--trade-offs)
+> Built for the Rappi "AI Buyer Agent" assignment. Stack mirrors the Rappi Fullstack
+> Engineer JD: **Python + FastAPI**, **LangGraph** agent orchestration, **PostgreSQL**
+> (Neon cloud), **React** dashboard, **Docker**.
 
 ---
 
 ## What it does
 
-The agent handles two of the assignment's scenarios end-to-end:
+Two scenarios, end-to-end:
 
-- **Scenario 1 — Purchase Recommendation Review.** Given a recommendation to buy *N* units,
-  the agent independently computes the true net requirement and decides to **accept**,
-  **modify**, **reject**, or **investigate** — the recommendation is *never assumed correct*.
-- **Scenario 2 — Supplier Cannot Fulfil.** An existing PO for 500 units is only confirmed
-  for 250. The agent detects the shortfall *after acting*, re-plans, and sources the
-  remaining 250 from an alternate supplier — or escalates if it can't.
+- **Scenario 1 — Reorder Recommendation Review.** Given a recommendation to buy *N* units,
+  the agent independently computes the true net requirement (from live inventory + the
+  client-order demand signal) and decides to **accept / modify / reject / investigate** —
+  the recommendation is *never assumed correct*.
+- **Scenario 2 — Vendor Cannot Fulfil.** An existing PO for 500 units is only confirmed for
+  250. The agent detects the shortfall *after acting*, re-plans, and sources the remaining
+  250 from an alternate vendor — or escalates.
 
-**Core design principle: the LLM drives; a deterministic guardrail keeps it honest.**
-With an API key, the agent genuinely reasons — it **calls tools** (function calling) to
-investigate and **proposes the decision itself**. A deterministic guardrail then
-independently recomputes the authoritative numbers and **validates the proposal, overriding
-it** if it violates a constraint or contradicts the math (this is where hallucinations are
-caught). Every number is computed by pure, unit-tested Python, never by the model. With no
-key, the same node runs a deterministic planner, so tests, evaluation, and the demo work
-identically offline.
+**Core design principle: the LLM drives; a deterministic guardrail keeps it honest.** With a
+usable API key the agent genuinely reasons — it **calls tools** (function calling) to
+investigate and **proposes the decision itself**. A deterministic guardrail then recomputes
+the authoritative numbers and **validates the proposal, overriding it** if it violates a
+constraint or contradicts the math. Every number is computed in code, never by the model.
+If the key is missing/out-of-quota, it falls back to a deterministic planner, so the app and
+tests always run.
+
+---
+
+## Data model (Postgres / Neon)
+
+Only the tables needed to drive the flow:
+
+| Table | Purpose |
+|---|---|
+| `products` | sku, name, category, unit_cost |
+| `inventory` | on_hand, reserved, safety_stock, reorder_point (per SKU) |
+| `client_orders` | customer orders — **the demand signal** (recent orders set the sales rate) |
+| `vendors` | vendor_id, name, reliability_score |
+| `vendor_products` | per-vendor terms: lead time, MOQ, unit price, capacity, is_primary |
+| `vendor_purchase_orders` | qty, confirmed_qty, status (open/partial/confirmed/…) |
+| `budgets` | allocated, spent (per category) |
+| `reorder_logs` | **every agent run**: the recommendation reviewed + the agent's full working (trace) |
+
+Demand is derived from the client-order stream: the last 7 days set the sales rate (projected
+over a 30-day horizon); a >50% jump vs the previous 7 days flags a **demand anomaly** →
+the agent chooses *investigate*.
 
 ---
 
@@ -59,266 +65,175 @@ flowchart TB
         UI1[Scenario Launcher]
         UI2[Agent Reasoning Timeline]
         UI3[HITL Approval Panel]
-        UI4[PO + Validation View]
-        UI5[Evaluation Scorecard]
+        UI4[Inventory / Vendor POs / Client Orders / Reorder Logs]
     end
-
     subgraph API["FastAPI Backend"]
         R[REST routes]
         AG[LangGraph Agent - StateGraph]
         TOOLS[Deterministic Tools]
-        RAG[RAG Retriever - pgvector]
         RUN[Runner: HITL pause / resume]
     end
-
-    subgraph DATA["Data Layer"]
-        PG[(PostgreSQL + pgvector)]
-    end
-
-    LLM[OpenAI API - swappable, stub mode]
+    PG[(PostgreSQL - Neon cloud)]
+    LLM[OpenAI API - swappable, graceful fallback]
 
     FE <-->|REST JSON| R
     R --> AG
     AG --> TOOLS
-    AG --> RAG
     AG <--> LLM
     R --> RUN --> AG
     TOOLS --> PG
-    RAG --> PG
+    R --> PG
 ```
 
-- **LangGraph agent** (`app/agent`) orchestrates: `agent_reason` (LLM tool-calling) →
-  `guardrail` (deterministic validate/override) → `act` → `validate`, with a
-  `validate → replan → agent_reason` feedback loop and an interrupt for human approval.
-- **Tool schema** (`app/agent/tools_schema.py`) exposes the read tools + an `assess_purchase`
-  tool (authoritative numbers) + a terminal `propose_decision` tool to the LLM.
-- **Deterministic tools** (`app/tools`) are pure functions over the DB and own all
-  arithmetic. Unit-tested; the single source of truth.
-- **RAG retriever** (`app/rag`) fetches relevant SOPs / business rules at decision time
-  using pgvector's cosine operator (with an in-Python cosine fallback on SQLite).
-- **Runner** (`app/agent/runner.py`) drives the graph, auto-resuming low-risk actions and
-  pausing high-risk ones, and persists every run for observability.
+- **`agent_reason`** — the LLM investigates via tool calls and proposes a decision.
+- **`guardrail`** — deterministic recompute + validate/override (catches hallucinations).
+- **Tools** (`app/tools`) — pure functions over the DB; own all arithmetic; unit-tested.
+- **Runner** (`app/agent/runner.py`) — drives the graph, auto-resumes low-risk actions,
+  pauses high-risk ones, and writes every run to `reorder_logs`.
 
-A deeper component write-up lives in [`docs/architecture.md`](docs/architecture.md).
+Deeper write-up: [`docs/architecture.md`](docs/architecture.md).
 
 ---
 
-## User / agent flow
+## Agent / user flow
 
 ```mermaid
 flowchart TD
     A([Buyer picks a scenario]) --> C[POST /runs]
     C --> D[[INGEST: recommendation treated as UNVERIFIED]]
-    D --> E[[GATHER: inventory, demand, open POs, supplier terms,<br/>budget, storage + RAG business rules]]
-    E --> F[[ANALYZE: compute net requirement, test every constraint]]
-    F --> H[[DECIDE: accept / modify / reject / investigate]]
-    H --> I{Action risk?}
-    I -- Low-risk --> K[[ACT: create/modify PO]]
-    I -- High-value / low-confidence --> J[/HITL: pause for buyer approval/]
-    J -- Approve --> K
-    J -- Reject --> N([No PO created])
-    K --> L[[VALIDATE: re-read persisted PO,<br/>re-check constraints, expected vs actual]]
-    L --> M{Outcome acceptable?}
-    M -- Yes --> N2([Show decision + validated PO])
-    M -- No / discrepancy --> O{Retries left?}
-    O -- Yes --> P[[FEEDBACK -> RE-PLAN:<br/>source elsewhere / adjust qty]]
-    P --> F
-    O -- No --> Q[/ESCALATE to human/]
+    D --> E[[AGENT_REASON: LLM calls tools — inventory, demand from client orders,\nvendor POs, vendor terms, budget — and proposes a decision]]
+    E --> F[[GUARDRAIL: recompute net requirement + constraints,\nvalidate/override the proposal]]
+    F --> G{Decision}
+    G -- reject / investigate --> Z([Log outcome])
+    G -- accept / modify / source --> H{Risk?}
+    H -- low --> K[[ACT: create/modify vendor PO]]
+    H -- high value / low conf --> J[/HITL: buyer approves or rejects/]
+    J --> K
+    K --> L[[VALIDATE: re-read persisted PO, re-check constraints,\nexpected vs actual]]
+    L --> M{Acceptable?}
+    M -- yes --> Z
+    M -- no / shortfall --> N{Retries?}
+    N -- yes --> P[[FEEDBACK → RE-PLAN → back to AGENT_REASON]]
+    P --> E
+    N -- no --> Q[/ESCALATE/] --> Z
 ```
 
 ---
 
-## How decisions are made
-
-Two layers. The **LLM proposes**, the **guardrail disposes**.
-
-**1. LLM reasoning (`agent_reason`).** The model is given the situation and the retrieved
-business rules, and a set of tools. It calls read tools to investigate, calls
-`assess_purchase` to get authoritative numbers (computed in code), and finally calls
-`propose_decision` with its chosen decision, quantity, supplier, and rationale.
-
-**2. Deterministic guardrail (`guardrail`).** Independently recomputes the net requirement
-and re-checks every constraint, derives the constraint-respecting *correct* decision
-(`app/agent/policy.py`), and compares it to the LLM's proposal. If they agree, the LLM's
-rationale is kept. If they differ, the guardrail **overrides** and records that it did —
-so a wrong LLM call can never reach execution.
-
-The deterministic core reconciles the recommendation against the truth:
+## Decision logic
 
 ```
 net_requirement = demand_over_horizon + safety_stock − on_hand − incoming_open_POs
 ```
 
-1. **Evidence gate** → no forecast, or recent sales deviate >50% → **investigate**.
+1. **Evidence gate** → demand anomaly (>50% week-over-week) or missing data → **investigate**.
 2. **Already covered** → `net_requirement ≤ 0` → **reject**.
-3. **Reconcile** → accept if within ±10% of net requirement; otherwise adjust toward it.
-4. **Apply hard constraints** → cap by budget, storage, supplier capacity; raise to MOQ; if
-   nothing feasible satisfies MOQ, **escalate**.
-5. Final decision is **accept** (qty unchanged) or **modify** (qty changed).
+3. **Reconcile** → accept the recommendation if within ±10% of net requirement; else adjust.
+4. **Constraints** → cap by budget and vendor capacity; raise to vendor MOQ; if nothing
+   feasible satisfies MOQ → **escalate**.
+5. Final: **accept** (qty unchanged) or **modify** (qty changed).
+
+The **guardrail** derives this deterministically and compares it to the LLM's proposal; if
+they differ it overrides and records that it did — so a wrong LLM call never executes.
+
+## Feedback loop (Scenario 2)
+
+The agent first acts on the existing PO (expecting 500). `simulate_vendor_response` confirms
+only 250. `validate` re-reads the result, sees the shortfall, checks whether inventory covers
+it (it doesn't), and emits structured feedback (`gap = 250`). `replan` loops back to
+`agent_reason`, which now sources exactly 250 from the alternate vendor; `validate` passes.
+Bounded by `MAX_AGENT_ITERS`, then escalates.
 
 ---
 
-## The feedback loop (validation)
+## Scenarios
 
-This is the part the assignment cares most about, and it is a genuine closed loop:
-
-1. **Pre-act validation** — a purchase can't violate a constraint; the policy caps the
-   quantity before any write.
-2. **Act** — the PO is created (committing budget + storage) or, in Scenario 2, the supplier
-   is asked to confirm the existing PO.
-3. **Post-act validation** (`validate` node) — the agent **re-reads persisted state**
-   (not its own intent) and checks: is the PO stored with the intended quantity? Is the
-   budget still within allocation? Storage within capacity? For Scenario 2: *did the
-   supplier actually confirm the full quantity?*
-4. **Discrepancy → replan** — in Scenario 2 the supplier confirms only 250 of 500. Validation
-   computes whether inventory covers the gap; it doesn't, so it emits structured feedback
-   (`gap = 250`) and loops back to `analyze`, which now evaluates an **alternate supplier**
-   and sources the exact shortfall.
-5. **Bounded** — the loop is capped by `MAX_AGENT_ITERS`; on exhaustion the agent
-   **escalates** to a human with the full trace.
-
-Every node writes a structured event to a `trace`, so the UI timeline and the evaluation
-harness can see exactly *how* a decision (and any recovery) was reached.
-
----
-
-## Guardrails & human-in-the-loop
-
-- **Deterministic validator is authoritative** — numbers come from code, not the LLM.
-- **Approval thresholds** — orders above `APPROVAL_VALUE_THRESHOLD` (default 50,000), or
-  from suppliers below `MIN_SUPPLIER_RELIABILITY`, or low-confidence decisions, **pause for
-  human approval** (LangGraph `interrupt_before=["act"]`). The buyer can approve, edit the
-  quantity, or reject.
-- **Bounded re-planning** + explicit **escalate** fallback.
-- **Full trace per run** persisted for observability (the JD's "tracing agent decisions").
-
----
-
-## Scenarios implemented
-
-| Preset | SKU | Recommendation | Expected decision | Why |
+| Preset | SKU | Recommendation | Expected | Why |
 |---|---|---|---|---|
 | S1 · Accept | Bottled Water | 800 | **accept** 800 | Matches computed net requirement |
-| S1 · Modify | Cooking Oil | 800 | **modify** → 500 | Oils budget only funds 500 units |
+| S1 · Modify | Cooking Oil | 800 | **modify** → 500 | Oils budget only funds 500 |
 | S1 · Reject | Canned Beans | 800 | **reject** | Inventory + open POs already cover demand |
-| S1 · Investigate | Seasonal Chocolate | 800 | **investigate** | Sales spiked ~3× vs forecast → unreliable |
+| S1 · Investigate | Seasonal Chocolate | 800 | **investigate** | Client orders spiked ~3× vs prior week |
 | S1 · Human approval | Premium Coffee | 800 | **accept** (paused) | Order value 52,000 > 50,000 threshold |
-| S2 · Supplier shortfall | Energy Drink | (PO 500) | **source_alternate** 250 | Primary confirms only 250; source the gap |
+| S2 · Vendor shortfall | Energy Drink | (PO 500) | **source_alternate** 250 | Vendor confirms only 250; source the gap |
 
 ---
 
-## Evaluation approach
+## Evaluation
 
-Rather than a heavy framework, the harness (`app/eval`) runs each scenario and scores it
-against the exact questions the assignment poses:
-
-| Check | How it's verified |
-|---|---|
-| Was the decision correct? | decision type (and quantity) match the expected outcome |
-| Did it obtain the necessary information? | required data-tool calls appear in the trace |
-| Did it respect relevant constraints? | post-action validation passed (or no action taken) |
-| Did it take the appropriate action? | a PO was created only when one should be |
-| Did it validate the result? | validation checks ran on the outcome |
-| Did it pause for a human when required? | HITL scenario actually reached `awaiting_approval` |
-| What happens when the initial action fails? | S2 detects the shortfall, re-plans, and resolves |
-
-Run it from the CLI (`python -m app.eval.runner`) for a printed scorecard, or from the
-**Evaluation** tab in the UI. Current result: **6/6 scenarios pass**.
+`app/eval` runs each scenario and scores it against the assignment's six questions (decision
+correct? obtained the info? respected constraints? right action? validated? recovered on
+failure?). Run `python -m app.eval.runner` (or the API `POST /eval/run`). Current: **6/6**.
+Plus **21 unit/e2e tests** (`pytest`).
 
 ---
 
 ## Run it
 
-### Option A — Docker Compose (recommended, matches the deployment target)
+The database is **Neon (cloud Postgres)** — no local DB to run.
+
+### Docker
 
 ```bash
-cp .env.example .env        # works as-is in stub mode; add OPENAI_API_KEY for real LLM
+cp .env.example .env      # set DATABASE_URL (Neon) and optionally OPENAI_API_KEY
 docker compose up --build
 ```
-
 - Dashboard: http://localhost:5173
-- API + Swagger docs: http://localhost:8000/docs
+- API + Swagger: http://localhost:8000/docs
 
-This starts PostgreSQL (with pgvector), the FastAPI backend (which auto-seeds the DB on
-boot), and the React frontend.
+The API seeds the database on startup (drop & recreate the app's tables).
 
-### Option B — Local (no Docker; uses SQLite + stub LLM)
+### Local
 
 ```bash
 # Backend
 cd backend
 python3.11 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python -m app.db.seed                       # seed a local SQLite DB
-uvicorn app.main:app --reload               # http://localhost:8000
+python -m app.db.seed          # seed Neon
+uvicorn app.main:app --reload  # http://localhost:8000
 
-# Frontend (separate terminal)
-cd frontend
-npm install
-npm run dev                                 # http://localhost:5173
+# Frontend
+cd frontend && npm install && npm run dev   # http://localhost:5173
 ```
 
-### Tests & evaluation
+### Tests
 
 ```bash
-cd backend
-python -m pytest                            # 19 unit + end-to-end tests
-python -m app.eval.runner                   # evaluation scorecard (6/6)
+cd backend && python -m pytest          # uses a local SQLite DB (no Neon needed)
 ```
 
-### Using a real LLM
+### LLM
 
-Set `OPENAI_API_KEY` in `.env`. **With a usable key**, the LLM genuinely drives the agent: it
-calls tools to investigate and proposes the decision, and the deterministic guardrail
-validates / overrides it. On startup the app probes the key (a tiny embeddings call); if the
-key is missing, invalid, **out of quota**, or the network is down, it falls back to a
-deterministic planner that produces the same constraint-respecting decisions — so the demo
-and tests always run. `GET /health` reports which provider is actually in use (`openai` vs
-`stub`). Either way the *numbers* come from code, never the model. The provider is swappable
-(`app/llm/provider.py`).
+Set `OPENAI_API_KEY` in `.env`. On startup the app probes the key; if it's missing, invalid,
+or out of quota, it falls back to a deterministic planner (same decisions). `GET /health`
+reports the provider actually in use (`openai` vs `stub`).
 
 ---
 
 ## Project structure
 
 ```
-buyit/
-├── backend/
-│   ├── app/
-│   │   ├── main.py            FastAPI app
-│   │   ├── config.py          settings (env-driven)
-│   │   ├── api/routes.py      REST endpoints
-│   │   ├── agent/             LangGraph: state, policy, nodes, graph, runner
-│   │   ├── tools/             deterministic tools: queries, constraints, actions
-│   │   ├── rag/               pgvector store + SOP corpus
-│   │   ├── llm/provider.py    OpenAI + deterministic stub (chat + embeddings)
-│   │   ├── db/                SQLAlchemy models, session, seed
-│   │   └── eval/              scenarios + scorecard runner
-│   └── tests/                 pytest suite
-├── frontend/                  React + Vite + Tailwind dashboard
-├── docker-compose.yml
-├── .env.example
-└── docs/architecture.md
+backend/app/
+  main.py            FastAPI app
+  api/routes.py      REST endpoints (runs, inventory, vendors, POs, client orders, logs, eval, reset)
+  agent/             LangGraph: state, policy, tools_schema, nodes, graph, runner, prompts
+  tools/             deterministic tools: queries, constraints, actions
+  llm/provider.py    OpenAI + deterministic stub (chat + probe)
+  db/                models, session, seed
+  eval/              scenarios + scorecard runner
+frontend/            React + Vite + Tailwind dashboard
 ```
 
 ---
 
-## Design notes & trade-offs
+## Notes & trade-offs
 
-- **LLM-driven with a deterministic guardrail.** The model does the reasoning and
-  tool-calling (it's a real agent), but a deterministic layer computes every number and can
-  override a wrong decision before it executes. This gives agentic flexibility *and*
-  reliability — the JD's exact "guardrails/validation to prevent incorrect or unintended
-  actions." The override is surfaced in the trace and UI, which doubles as hallucination
-  detection.
-- **Postgres + pgvector, with a SQLite fallback.** The Docker/demo path uses real pgvector
-  cosine search; tests and the no-infra path fall back to in-Python cosine so everything
-  runs anywhere.
-- **Scope.** Two scenarios are implemented end-to-end (depth over breadth, as the
-  assignment requests). Scenario 3 (demand/forecast change) is partially present as the
-  "unreliable forecast → investigate" path, and Scenario 4 (constraint prevents purchase) is
-  handled by the modify/escalate logic. The same architecture extends to replenishment,
-  safety-stock, and alternate-supplier problems listed as optional.
-- **Not implemented deliberately:** authN/Z, multi-tenant, real supplier APIs, streaming —
-  out of scope for a one-day exercise.
+- **LLM-driven with a deterministic guardrail** — agentic flexibility *and* reliability; the
+  override is surfaced in the trace (doubles as hallucination detection).
+- **Demand from client orders** — realistic for an inventory app; the same signal makes
+  Scenario 3 (demand change) a natural extension.
+- **Lean by design** — only the tables/constraints needed for Scenarios 1 & 2. No RAG,
+  storage, or multi-node modelling (kept out to avoid over-engineering).
+- Secrets live only in `.env` (gitignored); never commit the Neon password or API key.
 ```

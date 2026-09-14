@@ -1,12 +1,12 @@
 """LangGraph node implementations.
 
-The agent is genuinely LLM-driven when an API key is present: in `agent_reason` the model
-calls tools to investigate and proposes a decision. `guardrail` then independently recomputes
-the authoritative numbers and VALIDATES the LLM's proposal, overriding it if it violates a
-constraint or contradicts the math (this is where hallucinations are caught).
+The agent is genuinely LLM-driven when an API key with quota is present: in `agent_reason`
+the model calls tools to investigate and proposes a decision. `guardrail` then independently
+recomputes the authoritative numbers and VALIDATES the proposal, overriding it if it violates
+a constraint or contradicts the math (this is where hallucinations are caught).
 
-With no API key the same node runs a deterministic planner, so tests, evaluation, and the
-demo all work identically without external calls.
+With no usable LLM the same node runs a deterministic planner, so tests, evaluation, and the
+demo all work identically offline.
 """
 from __future__ import annotations
 
@@ -14,18 +14,12 @@ import json
 from typing import Dict, List, Optional
 
 from app.agent.policy import decide_purchase
-from app.agent.prompts import (
-    AGENT_SYSTEM,
-    NARRATE_SYSTEM,
-    build_agent_user,
-    build_narration_user,
-)
+from app.agent.prompts import AGENT_SYSTEM, build_agent_user
 from app.agent.state import AgentState
-from app.agent.tools_schema import READ_TOOL_NAMES, TOOL_SPECS, assess_purchase, dispatch
+from app.agent.tools_schema import READ_TOOL_NAMES, TOOL_SPECS, dispatch
 from app.config import get_settings
 from app.db.session import session_scope
 from app.llm.provider import get_chat
-from app.rag import store as rag_store
 from app.tools import actions, queries
 from app.tools.constraints import (
     ConstraintCheck,
@@ -44,41 +38,36 @@ def _ev(node: str, title: str, summary: str, data: Dict | None = None) -> Dict:
 
 # --------------------------------------------------------------------------- helpers
 def _phase(state: AgentState) -> str:
-    """S2 has two phases: verify the existing PO, then (after a shortfall) cover the gap."""
     if state.get("scenario") != "S2":
         return "review"
     return "cover_gap" if state.get("feedback") else "verify_existing"
 
 
 def _gather_facts(session, situation: Dict) -> Dict:
-    sku, node_id = situation["sku"], situation["node_id"]
+    sku = situation["sku"]
     product = queries.get_product(session, sku)
     category = product["category"] if product else "unknown"
-    primary = queries.get_supplier_terms(session, sku)
-    facts = {
+    primary = queries.get_vendor_terms(session, sku)
+    return {
         "product": product,
-        "inventory": queries.get_inventory(session, sku, node_id),
-        "demand": queries.get_demand(session, sku, node_id),
-        "open_pos": queries.get_open_purchase_orders(session, sku, node_id),
-        "primary_supplier": primary,
-        "budget": queries.get_budget(session, node_id, category),
-        "storage": queries.get_storage(session, node_id),
-        "alternate_suppliers": queries.get_alternate_suppliers(
-            session, sku, primary["supplier_id"] if primary else ""),
+        "inventory": queries.get_inventory(session, sku),
+        "demand": queries.get_demand(session, sku),
+        "open_pos": queries.get_open_purchase_orders(session, sku),
+        "primary_vendor": primary,
+        "budget": queries.get_budget(session, category),
+        "alternate_vendors": queries.get_alternate_vendors(
+            session, sku, primary["vendor_id"] if primary else ""),
     }
-    return facts
 
 
-def _constraint_result_for(facts: Dict, supplier: Dict, qty: int) -> ConstraintResult:
+def _constraint_result_for(facts: Dict, vendor: Optional[Dict], qty: int) -> ConstraintResult:
     return evaluate_constraints(
         qty=max(int(qty), 0),
-        unit_price=supplier["unit_price"] if supplier else 0.0,
-        min_order_qty=supplier["min_order_qty"] if supplier else 0,
+        unit_price=vendor["unit_price"] if vendor else 0.0,
+        min_order_qty=vendor["min_order_qty"] if vendor else 0,
         budget_remaining=facts["budget"].get("remaining", 0.0),
-        storage_remaining_units=facts["storage"].get("remaining_units", 0.0),
-        unit_volume=facts["product"]["unit_volume"] if facts["product"] else 1.0,
-        supplier_capacity=supplier["available_capacity"] if supplier else 0,
-        supplier_reliability=supplier["reliability_score"] if supplier else 0.0,
+        vendor_capacity=vendor["available_capacity"] if vendor else 0,
+        vendor_reliability=vendor["reliability_score"] if vendor else 0.0,
         min_reliability=settings.min_supplier_reliability,
     )
 
@@ -96,51 +85,37 @@ def ingest(state: AgentState) -> AgentState:
     sit = state["situation"]
     scenario = state.get("scenario", "S1")
     summary = (
-        f"Scenario {scenario}: review recommendation to buy {sit.get('recommended_qty')} "
-        f"units of {sit.get('sku')} at {sit.get('node_id')}."
+        f"Scenario {scenario}: review reorder recommendation to buy "
+        f"{sit.get('recommended_qty')} units of {sit.get('sku')}."
         if scenario == "S1"
-        else f"Scenario {scenario}: supplier response for existing PO {sit.get('po_id')}."
-    )
-    return {
-        "iteration": state.get("iteration", 0),
-        "status": "running",
-        "trace": [_ev("ingest", "Situation received",
-                      summary + " (recommendation treated as UNVERIFIED)", sit)],
-    }
+        else f"Scenario {scenario}: vendor response for existing PO {sit.get('po_id')}.")
+    return {"iteration": state.get("iteration", 0), "status": "running",
+            "trace": [_ev("ingest", "Situation received",
+                          summary + " (recommendation treated as UNVERIFIED)", sit)]}
 
 
 # --------------------------------------------------------------------------- agent_reason
 def agent_reason(state: AgentState) -> AgentState:
-    """The LLM investigates via tool calls and proposes a decision.
-
-    Falls back to a deterministic planner (that produces the guardrail baseline) when no
-    LLM key is configured, so behaviour is identical and testable offline.
-    """
-    sit = state["situation"]
     phase = _phase(state)
-    query = f"purchasing {sit.get('sku')} budget storage supplier lead time forecast shortfall"
-    rules = rag_store.retrieve(query, k=4)
-
     chat = get_chat()
     if chat.provider == "openai":
         try:
-            return _agent_reason_llm(state, rules, chat)
+            return _agent_reason_llm(state, chat)
         except Exception as exc:
-            # Graceful fallback: never let an LLM/network failure crash a purchasing run.
-            out = _agent_reason_stub(state, rules, phase)
+            out = _agent_reason_stub(state, phase)
             out["trace"] = [_ev("agent_reason", "LLM call failed — fell back to deterministic",
                                 f"{type(exc).__name__}: {exc}. Used the deterministic planner.",
                                 out["trace"][0]["data"])]
             return out
-    return _agent_reason_stub(state, rules, phase)
+    return _agent_reason_stub(state, phase)
 
 
-def _agent_reason_llm(state: AgentState, rules: List[str], chat) -> AgentState:
+def _agent_reason_llm(state: AgentState, chat) -> AgentState:
     sit = state["situation"]
     messages = [
         {"role": "system", "content": AGENT_SYSTEM},
         {"role": "user", "content": build_agent_user(
-            sit, state.get("scenario", "S1"), rules, state.get("feedback"))},
+            sit, state.get("scenario", "S1"), state.get("feedback"))},
     ]
     tool_calls_made: List[str] = []
     proposed: Optional[Dict] = None
@@ -151,19 +126,16 @@ def _agent_reason_llm(state: AgentState, rules: List[str], chat) -> AgentState:
             steps += 1
             msg = chat.call_tools(messages, TOOL_SPECS)
             if not msg["tool_calls"]:
-                # Model answered without a tool; nudge it once to use propose_decision.
                 messages.append({"role": "assistant", "content": msg["content"]})
                 messages.append({"role": "user",
                                  "content": "Call propose_decision with your final decision."})
                 continue
-
             messages.append({
                 "role": "assistant", "content": msg["content"],
                 "tool_calls": [{"id": t["id"], "type": "function",
                                 "function": {"name": t["name"],
                                              "arguments": json.dumps(t["arguments"])}}
-                               for t in msg["tool_calls"]],
-            })
+                               for t in msg["tool_calls"]]})
             for tc in msg["tool_calls"]:
                 if tc["name"] == "propose_decision":
                     proposed = tc["arguments"]
@@ -179,66 +151,55 @@ def _agent_reason_llm(state: AgentState, rules: List[str], chat) -> AgentState:
 
     summary = (f"LLM investigated with {len(tool_calls_made)} tool call(s) and proposed: "
                f"{(proposed or {}).get('decision_type', 'no decision')}.")
-    return {
-        "retrieved_rules": rules,
-        "proposed_decision": proposed,
-        "trace": [_ev("agent_reason", "Agent reasoning (LLM tool-calling)", summary,
-                      {"tool_calls": tool_calls_made, "retrieved_rules": rules,
-                       "llm_proposed": proposed})],
-    }
+    return {"proposed_decision": proposed,
+            "trace": [_ev("agent_reason", "Agent reasoning (LLM tool-calling)", summary,
+                          {"tool_calls": tool_calls_made, "llm_proposed": proposed})]}
 
 
-def _agent_reason_stub(state: AgentState, rules: List[str], phase: str) -> AgentState:
-    """Deterministic planner: proposes exactly the guardrail baseline (offline-safe)."""
+def _agent_reason_stub(state: AgentState, phase: str) -> AgentState:
     with session_scope() as session:
         facts = _gather_facts(session, state["situation"])
     baseline = _baseline_decision(state, facts, phase)
     proposed = {"decision_type": baseline["type"], "qty": baseline["qty"],
-                "supplier_id": baseline.get("supplier_id"),
+                "vendor_id": baseline.get("vendor_id"),
                 "rationale": " ".join(baseline.get("factors", []))}
-    return {
-        "retrieved_rules": rules,
-        "proposed_decision": proposed,
-        "trace": [_ev("agent_reason", "Agent reasoning (deterministic planner)",
-                      f"Investigated {len(READ_TOOL_NAMES)} tools and proposed: {baseline['type']}.",
-                      {"tool_calls": READ_TOOL_NAMES, "retrieved_rules": rules,
-                       "llm_proposed": proposed})],
-    }
+    return {"proposed_decision": proposed,
+            "trace": [_ev("agent_reason", "Agent reasoning (deterministic planner)",
+                          f"Investigated {len(READ_TOOL_NAMES)} tools and proposed: {baseline['type']}.",
+                          {"tool_calls": READ_TOOL_NAMES, "llm_proposed": proposed})]}
 
 
 # --------------------------------------------------------------------------- baseline
 def _baseline_decision(state: AgentState, facts: Dict, phase: str) -> Dict:
-    """The deterministic, constraint-respecting 'correct' decision for the current phase."""
     sit = state["situation"]
 
     if phase == "verify_existing":
         po = facts["open_pos"]["orders"][0]
-        return {"type": "confirm_existing", "qty": po["qty"], "supplier_id": po["supplier_id"],
+        return {"type": "confirm_existing", "qty": po["qty"], "vendor_id": po["vendor_id"],
                 "po_id": po["po_id"], "confidence": "medium",
                 "factors": [f"Existing PO {po['po_id']} for {po['qty']} units is open with "
-                            f"{po['supplier_id']}. Verify the supplier can fulfill it."]}
+                            f"{po['vendor_id']}. Verify the vendor can fulfill it."]}
 
     if phase == "cover_gap":
         gap = state["feedback"][-1]["gap"]
-        alts = facts["alternate_suppliers"]
-        supplier = alts[0] if alts else None
-        if supplier:
-            cres = _constraint_result_for(facts, supplier, gap)
-            reliable = supplier["reliability_score"] >= settings.min_supplier_reliability
-            if reliable and cres.max_feasible_qty >= min(gap, supplier["min_order_qty"] or 1):
+        alts = facts["alternate_vendors"]
+        vendor = alts[0] if alts else None
+        if vendor:
+            cres = _constraint_result_for(facts, vendor, gap)
+            reliable = vendor["reliability_score"] >= settings.min_supplier_reliability
+            if reliable and cres.max_feasible_qty >= min(gap, vendor["min_order_qty"] or 1):
                 qty = min(gap, cres.max_feasible_qty)
-                return {"type": "source_alternate", "qty": qty,
-                        "supplier_id": supplier["supplier_id"], "confidence": "medium",
-                        "factors": [f"Shortfall of {gap} units. Alternate supplier "
-                                    f"{supplier['name']} can supply {qty} (lead time "
-                                    f"{supplier['lead_time_days']}d, reliability "
-                                    f"{supplier['reliability_score']:.2f}). Sourcing the gap."]}
-        return {"type": "escalate", "qty": 0, "supplier_id": None, "confidence": "low",
+                return {"type": "source_alternate", "qty": qty, "vendor_id": vendor["vendor_id"],
+                        "confidence": "medium",
+                        "factors": [f"Shortfall of {gap} units. Alternate vendor {vendor['name']} "
+                                    f"can supply {qty} (lead time {vendor['lead_time_days']}d, "
+                                    f"reliability {vendor['reliability_score']:.2f}). Sourcing the gap."]}
+        return {"type": "escalate", "qty": 0, "vendor_id": None, "confidence": "low",
                 "factors": [f"Shortfall of {gap} units cannot be covered by an acceptable "
-                            f"alternate supplier. Escalating to a human buyer."]}
+                            f"alternate vendor. Escalating to a human buyer."]}
 
     # review (S1)
-    primary = facts["primary_supplier"]
+    primary = facts["primary_vendor"]
     recommended = sit.get("recommended_qty", 0)
     cres = _constraint_result_for(facts, primary, recommended)
     dem = facts["demand"]
@@ -248,15 +209,13 @@ def _baseline_decision(state: AgentState, facts: Dict, phase: str) -> Dict:
         demand_available=dem.get("available", False),
         forecast_reliable=dem.get("forecast_reliable", False),
         constraints=cres,
-        min_order_qty=primary["min_order_qty"] if primary else 0,
-    )
-    decision["supplier_id"] = primary["supplier_id"] if primary else None
+        min_order_qty=primary["min_order_qty"] if primary else 0)
+    decision["vendor_id"] = primary["vendor_id"] if primary else None
     return decision
 
 
 # --------------------------------------------------------------------------- guardrail
 def guardrail(state: AgentState) -> AgentState:
-    """Recompute authoritative numbers, validate the LLM proposal, override if needed."""
     phase = _phase(state)
     with session_scope() as session:
         facts = _gather_facts(session, state["situation"])
@@ -264,12 +223,11 @@ def guardrail(state: AgentState) -> AgentState:
     baseline = _baseline_decision(state, facts, phase)
     proposed = state.get("proposed_decision") or {}
 
-    # Does the LLM's proposal match the deterministic-correct decision?
     same_type = proposed.get("decision_type") == baseline["type"]
     same_qty = int(proposed.get("qty", -1) or 0) == baseline["qty"]
-    same_supplier = (baseline["type"] != "source_alternate"
-                     or proposed.get("supplier_id") == baseline.get("supplier_id"))
-    agreed = bool(proposed) and same_type and same_qty and same_supplier
+    same_vendor = (baseline["type"] != "source_alternate"
+                   or proposed.get("vendor_id") == baseline.get("vendor_id"))
+    agreed = bool(proposed) and same_type and same_qty and same_vendor
 
     decision = dict(baseline)
     decision["overridden"] = not agreed and bool(proposed)
@@ -280,39 +238,27 @@ def guardrail(state: AgentState) -> AgentState:
         decision["rationale"] = " ".join(baseline.get("factors", []))
         if decision["overridden"]:
             decision["factors"] = list(baseline.get("factors", [])) + [
-                f"Guardrail override: the model proposed "
-                f"{proposed.get('decision_type')} (qty {proposed.get('qty')}), which conflicts "
-                f"with the verified numbers/constraints; corrected to {baseline['type']} "
-                f"(qty {baseline['qty']})."]
+                f"Guardrail override: the model proposed {proposed.get('decision_type')} "
+                f"(qty {proposed.get('qty')}), which conflicts with the verified "
+                f"numbers/constraints; corrected to {baseline['type']} (qty {baseline['qty']})."]
             decision["rationale"] = " ".join(decision["factors"])
 
-    # Authoritative analysis for the UI / validation.
-    supplier = None
-    if phase == "cover_gap":
-        supplier = (facts["alternate_suppliers"] or [None])[0]
-    else:
-        supplier = facts["primary_supplier"]
-    cres = _constraint_result_for(facts, supplier, decision.get("qty", 0))
+    vendor = (facts["alternate_vendors"] or [None])[0] if phase == "cover_gap" \
+        else facts["primary_vendor"]
+    cres = _constraint_result_for(facts, vendor, decision.get("qty", 0))
     net_req = _net_requirement(facts)
     analysis = {
-        "phase": phase,
-        "net_requirement": net_req,
+        "phase": phase, "net_requirement": net_req,
         "forecast_reliable": facts["demand"].get("forecast_reliable", False),
         "demand_available": facts["demand"].get("available", False),
-        "evaluated_supplier": supplier,
-        "constraints": cres.to_dict(),
+        "evaluated_vendor": vendor, "constraints": cres.to_dict(),
         "summary": {
-            "net_requirement": net_req,
-            "on_hand": facts["inventory"]["on_hand"],
+            "net_requirement": net_req, "on_hand": facts["inventory"]["on_hand"],
             "incoming": facts["open_pos"]["incoming_open_pos"],
             "demand_over_horizon": facts["demand"].get("demand_over_horizon", 0),
-            "budget_remaining": facts["budget"].get("remaining"),
-            "storage_remaining_units": facts["storage"].get("remaining_units"),
-        },
-    }
+            "budget_remaining": facts["budget"].get("remaining")}}
 
-    # Human-in-the-loop guardrail.
-    order_value = decision.get("qty", 0) * (supplier["unit_price"] if supplier else 0)
+    order_value = decision.get("qty", 0) * (vendor["unit_price"] if vendor else 0)
     needs_human = False
     hitl_reasons: List[str] = []
     if decision["type"] in ("accept", "modify", "source_alternate", "confirm_existing"):
@@ -320,9 +266,9 @@ def guardrail(state: AgentState) -> AgentState:
             needs_human = True
             hitl_reasons.append(f"Order value {order_value:.0f} exceeds approval threshold "
                                 f"{settings.approval_value_threshold:.0f}.")
-        if supplier and supplier["reliability_score"] < settings.min_supplier_reliability:
+        if vendor and vendor["reliability_score"] < settings.min_supplier_reliability:
             needs_human = True
-            hitl_reasons.append(f"Supplier reliability {supplier['reliability_score']:.2f} below "
+            hitl_reasons.append(f"Vendor reliability {vendor['reliability_score']:.2f} below "
                                 f"minimum {settings.min_supplier_reliability:.2f}.")
         if decision.get("confidence") == "low":
             needs_human = True
@@ -332,17 +278,13 @@ def guardrail(state: AgentState) -> AgentState:
 
     title = "Guardrail: validated" + (" & OVERRODE the model" if decision["overridden"]
                                       else " the decision")
-    return {
-        "facts": facts,
-        "analysis": analysis,
-        "decision": decision,
-        "needs_human": needs_human,
-        "approval": {"status": "pending"} if needs_human else {"status": "not_required"},
-        "trace": [_ev("guardrail", title, decision["rationale"],
-                      {"decision": decision, "analysis_summary": analysis["summary"],
-                       "constraints": analysis["constraints"], "needs_human": needs_human,
-                       "hitl_reasons": hitl_reasons, "overridden": decision["overridden"]})],
-    }
+    return {"facts": facts, "analysis": analysis, "decision": decision,
+            "needs_human": needs_human,
+            "approval": {"status": "pending"} if needs_human else {"status": "not_required"},
+            "trace": [_ev("guardrail", title, decision["rationale"],
+                          {"decision": decision, "analysis_summary": analysis["summary"],
+                           "constraints": analysis["constraints"], "needs_human": needs_human,
+                           "hitl_reasons": hitl_reasons, "overridden": decision["overridden"]})]}
 
 
 # --------------------------------------------------------------------------- approval_gate
@@ -368,21 +310,20 @@ def act(state: AgentState) -> AgentState:
 
     with session_scope() as s:
         if decision["type"] == "confirm_existing":
-            result = actions.simulate_supplier_response(s, decision["po_id"])
+            result = actions.simulate_vendor_response(s, decision["po_id"])
             result["expected_qty"] = decision["qty"]
-            title = "Requested supplier confirmation"
-            summary = (f"Ordered {result['ordered_qty']}, supplier confirmed "
+            title = "Requested vendor confirmation"
+            summary = (f"Ordered {result['ordered_qty']}, vendor confirmed "
                        f"{result['confirmed_qty']} (shortfall {result['shortfall']}).")
         else:
-            supplier = queries.get_supplier_terms(s, sit["sku"], decision.get("supplier_id"))
-            po = actions.create_purchase_order(
-                s, sku=sit["sku"], supplier_id=decision["supplier_id"], node_id=sit["node_id"],
-                qty=decision["qty"], unit_price=supplier["unit_price"],
-                expected_delivery_days=supplier["lead_time_days"])
+            vendor = queries.get_vendor_terms(s, sit["sku"], decision.get("vendor_id"))
+            po = actions.create_vendor_po(
+                s, sku=sit["sku"], vendor_id=decision["vendor_id"], qty=decision["qty"],
+                unit_price=vendor["unit_price"], expected_delivery_days=vendor["lead_time_days"])
             result = po
             title = f"Created purchase order {po['po_id']}"
             summary = (f"PO {po['po_id']}: {po['qty']} units of {po['sku']} from "
-                       f"{po['supplier_id']} @ {po['unit_price']} (value {po['order_value']:.0f}).")
+                       f"{po['vendor_id']} @ {po['unit_price']} (value {po['order_value']:.0f}).")
 
     return {"status": "running", "action_result": result,
             "trace": [_ev("act", title, summary, {"action_result": result})]}
@@ -401,7 +342,7 @@ def validate(state: AgentState) -> AgentState:
     if decision["type"] == "confirm_existing":
         expected, confirmed = result["expected_qty"], result["confirmed_qty"]
         match = confirmed >= expected
-        checks.append({"name": "supplier_fulfilled_order", "passed": match,
+        checks.append({"name": "vendor_fulfilled_order", "passed": match,
                        "detail": f"expected {expected}, confirmed {confirmed}"})
         if not match:
             inv, dem = facts["inventory"], facts["demand"]
@@ -417,28 +358,23 @@ def validate(state: AgentState) -> AgentState:
                 checks.append({"name": "inventory_covers_shortfall", "passed": False,
                                "detail": f"uncovered gap of {net_after} units remains"})
                 feedback_items.append({
-                    "reason": "supplier_shortfall", "shortfall": result["shortfall"],
+                    "reason": "vendor_shortfall", "shortfall": result["shortfall"],
                     "gap": net_after,
-                    "detail": f"Supplier confirmed only {confirmed}/{expected}; {net_after} "
-                              f"units still uncovered after inventory."})
+                    "detail": f"Vendor confirmed only {confirmed}/{expected}; {net_after} units "
+                              f"still uncovered after inventory."})
     else:
         with session_scope() as s:
             po = actions.get_purchase_order(s, result["po_id"])
             product = queries.get_product(s, po["sku"])
-            budget = queries.get_budget(s, po["node_id"], product["category"])
-            storage = queries.get_storage(s, po["node_id"])
+            budget = queries.get_budget(s, product["category"])
         qty_ok = po["qty"] == decision["qty"]
         budget_ok = budget["spent"] <= budget["allocated"] + 1e-6
-        storage_ok = storage["used"] <= storage["total"] + 1e-6
         checks += [
             {"name": "po_persisted_with_expected_qty", "passed": qty_ok,
              "detail": f"persisted qty {po['qty']} vs intended {decision['qty']}"},
             {"name": "budget_not_exceeded", "passed": budget_ok,
-             "detail": f"spent {budget['spent']:.0f} vs allocated {budget['allocated']:.0f}"},
-            {"name": "storage_not_exceeded", "passed": storage_ok,
-             "detail": f"used {storage['used']:.0f} vs total {storage['total']:.0f}"},
-        ]
-        acceptable = qty_ok and budget_ok and storage_ok
+             "detail": f"spent {budget['spent']:.0f} vs allocated {budget['allocated']:.0f}"}]
+        acceptable = qty_ok and budget_ok
         if not acceptable:
             feedback_items.append({"reason": "post_action_constraint_violation",
                                    "detail": "Persisted PO violates a constraint; re-planning."})
@@ -454,7 +390,7 @@ def validate(state: AgentState) -> AgentState:
     return out
 
 
-# --------------------------------------------------------------------------- replan
+# --------------------------------------------------------------------------- replan / escalate / finalize
 def replan(state: AgentState) -> AgentState:
     fb = state["feedback"][-1]
     return {"iteration": state.get("iteration", 0) + 1, "status": "running",
@@ -463,7 +399,6 @@ def replan(state: AgentState) -> AgentState:
                           {"feedback": fb, "iteration": state.get("iteration", 0) + 1})]}
 
 
-# --------------------------------------------------------------------------- escalate
 def escalate(state: AgentState) -> AgentState:
     reason = " ".join(state["decision"].get("factors", [])) if state.get("decision") else ""
     if state.get("feedback"):
@@ -473,7 +408,6 @@ def escalate(state: AgentState) -> AgentState:
                           reason or "Situation requires human judgement.", {"reason": reason})]}
 
 
-# --------------------------------------------------------------------------- finalize
 def finalize(state: AgentState) -> AgentState:
     status = "escalated" if state.get("status") == "escalated" else "done"
     dtype = state.get("decision", {}).get("type", "n/a")

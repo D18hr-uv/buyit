@@ -50,14 +50,12 @@ def evaluate_constraints(
     unit_price: float,
     min_order_qty: int,
     budget_remaining: float,
-    storage_remaining_units: float,
-    unit_volume: float,
-    supplier_capacity: int,
-    supplier_reliability: float,
+    vendor_capacity: int,
+    vendor_reliability: float,
     min_reliability: float,
 ) -> ConstraintResult:
     """Check a proposed purchase `qty` against every constraint and compute the largest
-    quantity that would satisfy the quantitative constraints."""
+    quantity that would satisfy the quantitative constraints (budget + vendor capacity)."""
     checks: List[ConstraintCheck] = []
 
     order_value = qty * unit_price
@@ -70,21 +68,12 @@ def evaluate_constraints(
         f"order value {order_value:.2f} vs remaining budget {budget_remaining:.2f}",
     ))
 
-    # Storage
-    needed_storage = qty * unit_volume
-    storage_ok = needed_storage <= storage_remaining_units + 1e-6
+    # Vendor capacity
+    capacity_ok = qty <= vendor_capacity
     checks.append(ConstraintCheck(
-        "storage",
-        storage_ok,
-        f"needs {needed_storage:.1f} storage units vs {storage_remaining_units:.1f} free",
-    ))
-
-    # Supplier capacity
-    capacity_ok = qty <= supplier_capacity
-    checks.append(ConstraintCheck(
-        "supplier_capacity",
+        "vendor_capacity",
         capacity_ok,
-        f"qty {qty} vs supplier capacity {supplier_capacity}",
+        f"qty {qty} vs vendor capacity {vendor_capacity}",
     ))
 
     # Minimum order quantity
@@ -95,17 +84,16 @@ def evaluate_constraints(
         f"qty {qty} vs MOQ {min_order_qty}",
     ))
 
-    # Supplier reliability
-    reliability_ok = supplier_reliability >= min_reliability
+    # Vendor reliability
+    reliability_ok = vendor_reliability >= min_reliability
     checks.append(ConstraintCheck(
-        "supplier_reliability",
+        "vendor_reliability",
         reliability_ok,
-        f"reliability {supplier_reliability:.2f} vs min {min_reliability:.2f}",
+        f"reliability {vendor_reliability:.2f} vs min {min_reliability:.2f}",
     ))
 
     max_by_budget = math.floor(budget_remaining / unit_price) if unit_price > 0 else qty
-    max_by_storage = math.floor(storage_remaining_units / unit_volume) if unit_volume > 0 else qty
-    max_feasible = max(0, min(max_by_budget, max_by_storage, supplier_capacity))
+    max_feasible = max(0, min(max_by_budget, vendor_capacity))
 
     violations = [c.name for c in checks if not c.passed]
     # reliability failing does not reduce max_feasible_qty; it is a routing signal (HITL)

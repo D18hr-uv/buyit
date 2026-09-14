@@ -1,43 +1,9 @@
 services:
-  postgres:
-    image: pgvector/pgvector:pg16
-    environment:
-      POSTGRES_USER: buyer
-      POSTGRES_PASSWORD: buyer
-      POSTGRES_DB: buyit
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U buyer -d buyit"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
   api:
     build: ./backend
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql+psycopg://buyer:buyer@postgres:5432/buyit
-      REDIS_URL: redis://redis:6379/0
+    env_file: .env          # provides DATABASE_URL (Neon Postgres) + OPENAI_API_KEY
     ports:
       - "8000:8000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
 
   frontend:
     build: ./frontend
@@ -47,6 +13,3 @@ services:
       - "5173:5173"
     depends_on:
       - api
-
-volumes:
-  pgdata:

@@ -75,7 +75,7 @@ def _score_one(sc: Dict[str, Any]) -> Dict[str, Any]:
     if exp.get("recovered"):
         checks["recovered_from_failure"] = (
             run.get("iteration", 0) >= 1
-            and any(f.get("reason") == "supplier_shortfall" for f in run.get("feedback", []))
+            and any(f.get("reason") == "vendor_shortfall" for f in run.get("feedback", []))
             and run.get("status") == "done"
         )
 

@@ -1,18 +1,15 @@
-"""Operational data model (mock supply-chain domain)."""
+"""Lean inventory-management schema.
+
+Only the tables needed to drive the two purchasing scenarios end-to-end:
+products, inventory, vendors (+ their per-product terms), vendor purchase orders,
+client orders (which create demand), category budgets, and a reorder/agent log.
+"""
 from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import (
-    Boolean,
-    DateTime,
-    Float,
-    ForeignKey,
-    Integer,
-    String,
-    Text,
-)
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
 
@@ -26,51 +23,30 @@ class Product(Base):
     sku: Mapped[str] = mapped_column(String, primary_key=True)
     name: Mapped[str] = mapped_column(String)
     category: Mapped[str] = mapped_column(String)
-    unit_cost: Mapped[float] = mapped_column(Float)          # reference cost
-    unit_volume: Mapped[float] = mapped_column(Float)        # storage units per unit
-    is_perishable: Mapped[bool] = mapped_column(Boolean, default=False)
-    shelf_life_days: Mapped[int] = mapped_column(Integer, default=365)
-
-
-class FulfillmentNode(Base):
-    __tablename__ = "fulfillment_nodes"
-    node_id: Mapped[str] = mapped_column(String, primary_key=True)
-    name: Mapped[str] = mapped_column(String)
-    region: Mapped[str] = mapped_column(String)
+    unit_cost: Mapped[float] = mapped_column(Float)
 
 
 class Inventory(Base):
     __tablename__ = "inventory"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    sku: Mapped[str] = mapped_column(ForeignKey("products.sku"))
-    node_id: Mapped[str] = mapped_column(ForeignKey("fulfillment_nodes.node_id"))
+    sku: Mapped[str] = mapped_column(ForeignKey("products.sku"), primary_key=True)
     on_hand: Mapped[int] = mapped_column(Integer, default=0)
     reserved: Mapped[int] = mapped_column(Integer, default=0)
     safety_stock: Mapped[int] = mapped_column(Integer, default=0)
+    reorder_point: Mapped[int] = mapped_column(Integer, default=0)
 
 
-class DemandForecast(Base):
-    __tablename__ = "demand_forecast"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    sku: Mapped[str] = mapped_column(ForeignKey("products.sku"))
-    node_id: Mapped[str] = mapped_column(ForeignKey("fulfillment_nodes.node_id"))
-    daily_forecast: Mapped[float] = mapped_column(Float)      # forecasted units/day
-    horizon_days: Mapped[int] = mapped_column(Integer, default=30)
-    recent_daily_actuals: Mapped[str] = mapped_column(Text, default="[]")  # JSON list
-
-
-class Supplier(Base):
-    __tablename__ = "suppliers"
-    supplier_id: Mapped[str] = mapped_column(String, primary_key=True)
+class Vendor(Base):
+    __tablename__ = "vendors"
+    vendor_id: Mapped[str] = mapped_column(String, primary_key=True)
     name: Mapped[str] = mapped_column(String)
-    reliability_score: Mapped[float] = mapped_column(Float, default=0.9)   # 0..1
-    region: Mapped[str] = mapped_column(String, default="LATAM")
+    reliability_score: Mapped[float] = mapped_column(Float, default=0.9)  # 0..1
 
 
-class SupplierSku(Base):
-    __tablename__ = "supplier_skus"
+class VendorProduct(Base):
+    """A vendor's terms for supplying a given SKU."""
+    __tablename__ = "vendor_products"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    supplier_id: Mapped[str] = mapped_column(ForeignKey("suppliers.supplier_id"))
+    vendor_id: Mapped[str] = mapped_column(ForeignKey("vendors.vendor_id"))
     sku: Mapped[str] = mapped_column(ForeignKey("products.sku"))
     lead_time_days: Mapped[int] = mapped_column(Integer, default=7)
     min_order_qty: Mapped[int] = mapped_column(Integer, default=0)
@@ -79,44 +55,48 @@ class SupplierSku(Base):
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
-class PurchaseOrder(Base):
-    __tablename__ = "purchase_orders"
+class VendorPurchaseOrder(Base):
+    __tablename__ = "vendor_purchase_orders"
     po_id: Mapped[str] = mapped_column(String, primary_key=True)
     sku: Mapped[str] = mapped_column(ForeignKey("products.sku"))
-    supplier_id: Mapped[str] = mapped_column(ForeignKey("suppliers.supplier_id"))
-    node_id: Mapped[str] = mapped_column(ForeignKey("fulfillment_nodes.node_id"))
+    vendor_id: Mapped[str] = mapped_column(ForeignKey("vendors.vendor_id"))
     qty: Mapped[int] = mapped_column(Integer)
     confirmed_qty: Mapped[int] = mapped_column(Integer, default=0)
     unit_price: Mapped[float] = mapped_column(Float)
     status: Mapped[str] = mapped_column(String, default="open")  # open|confirmed|partial|closed|cancelled
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     expected_delivery_days: Mapped[int] = mapped_column(Integer, default=7)
+
+
+class ClientOrder(Base):
+    """A customer order. The stream of client orders is the demand signal."""
+    __tablename__ = "client_orders"
+    order_id: Mapped[str] = mapped_column(String, primary_key=True)
+    sku: Mapped[str] = mapped_column(ForeignKey("products.sku"))
+    qty: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String, default="fulfilled")  # fulfilled|open
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
 class Budget(Base):
     __tablename__ = "budgets"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    node_id: Mapped[str] = mapped_column(ForeignKey("fulfillment_nodes.node_id"))
     category: Mapped[str] = mapped_column(String)
     period: Mapped[str] = mapped_column(String, default="2026-Q3")
     allocated: Mapped[float] = mapped_column(Float)
     spent: Mapped[float] = mapped_column(Float, default=0.0)
 
 
-class Storage(Base):
-    __tablename__ = "storage"
-    node_id: Mapped[str] = mapped_column(ForeignKey("fulfillment_nodes.node_id"), primary_key=True)
-    total_capacity_units: Mapped[float] = mapped_column(Float)
-    used_units: Mapped[float] = mapped_column(Float, default=0.0)
-
-
-class AgentRun(Base):
-    """Persisted trace of an agent run for observability + the UI timeline."""
-    __tablename__ = "agent_runs"
+class ReorderLog(Base):
+    """Every agent run: the reorder/recommendation reviewed + the agent's full working."""
+    __tablename__ = "reorder_logs"
     run_id: Mapped[str] = mapped_column(String, primary_key=True)
+    sku: Mapped[str] = mapped_column(String, default="")
     scenario: Mapped[str] = mapped_column(String)
-    status: Mapped[str] = mapped_column(String, default="running")  # running|awaiting_approval|done|escalated
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    trigger: Mapped[str] = mapped_column(String, default="recommendation_review")
+    status: Mapped[str] = mapped_column(String, default="running")
+    decision_type: Mapped[str] = mapped_column(String, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     situation_json: Mapped[str] = mapped_column(Text, default="{}")
     trace_json: Mapped[str] = mapped_column(Text, default="[]")
     result_json: Mapped[str] = mapped_column(Text, default="{}")
