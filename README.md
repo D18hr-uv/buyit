@@ -40,11 +40,14 @@ The agent handles two of the assignment's scenarios end-to-end:
   for 250. The agent detects the shortfall *after acting*, re-plans, and sources the
   remaining 250 from an alternate supplier — or escalates if it can't.
 
-**Core design principle: the LLM reasons and explains; deterministic tools do all the
-math.** Every number the agent reports (net requirement, budget headroom, feasible
-quantity) is computed by pure, unit-tested Python — never hallucinated. The system runs
-fully in a deterministic **stub mode with no API key**, and transparently upgrades to real
-OpenAI narration when a key is provided.
+**Core design principle: the LLM drives; a deterministic guardrail keeps it honest.**
+With an API key, the agent genuinely reasons — it **calls tools** (function calling) to
+investigate and **proposes the decision itself**. A deterministic guardrail then
+independently recomputes the authoritative numbers and **validates the proposal, overriding
+it** if it violates a constraint or contradicts the math (this is where hallucinations are
+caught). Every number is computed by pure, unit-tested Python, never by the model. With no
+key, the same node runs a deterministic planner, so tests, evaluation, and the demo work
+identically offline.
 
 ---
 
@@ -84,12 +87,15 @@ flowchart TB
     RAG --> PG
 ```
 
+- **LangGraph agent** (`app/agent`) orchestrates: `agent_reason` (LLM tool-calling) →
+  `guardrail` (deterministic validate/override) → `act` → `validate`, with a
+  `validate → replan → agent_reason` feedback loop and an interrupt for human approval.
+- **Tool schema** (`app/agent/tools_schema.py`) exposes the read tools + an `assess_purchase`
+  tool (authoritative numbers) + a terminal `propose_decision` tool to the LLM.
 - **Deterministic tools** (`app/tools`) are pure functions over the DB and own all
   arithmetic. Unit-tested; the single source of truth.
 - **RAG retriever** (`app/rag`) fetches relevant SOPs / business rules at decision time
   using pgvector's cosine operator (with an in-Python cosine fallback on SQLite).
-- **LangGraph agent** (`app/agent`) orchestrates: gather → analyze → decide → act →
-  validate, with a `validate → replan → analyze` loop and an interrupt for human approval.
 - **Runner** (`app/agent/runner.py`) drives the graph, auto-resuming low-risk actions and
   pausing high-risk ones, and persists every run for observability.
 
@@ -124,21 +130,30 @@ flowchart TD
 
 ## How decisions are made
 
-For **Scenario 1**, `app/agent/policy.py` reconciles the recommendation against the
-computed net requirement:
+Two layers. The **LLM proposes**, the **guardrail disposes**.
+
+**1. LLM reasoning (`agent_reason`).** The model is given the situation and the retrieved
+business rules, and a set of tools. It calls read tools to investigate, calls
+`assess_purchase` to get authoritative numbers (computed in code), and finally calls
+`propose_decision` with its chosen decision, quantity, supplier, and rationale.
+
+**2. Deterministic guardrail (`guardrail`).** Independently recomputes the net requirement
+and re-checks every constraint, derives the constraint-respecting *correct* decision
+(`app/agent/policy.py`), and compares it to the LLM's proposal. If they agree, the LLM's
+rationale is kept. If they differ, the guardrail **overrides** and records that it did —
+so a wrong LLM call can never reach execution.
+
+The deterministic core reconciles the recommendation against the truth:
 
 ```
 net_requirement = demand_over_horizon + safety_stock − on_hand − incoming_open_POs
 ```
 
-1. **Evidence gate** → if there's no forecast, or recent sales deviate >50% from forecast,
-   the decision is **investigate** (don't commit on bad data).
-2. **Already covered** → if `net_requirement ≤ 0`, **reject**.
-3. **Reconcile** → accept the recommendation if it's within ±10% of net requirement;
-   otherwise adjust toward net requirement.
-4. **Apply hard constraints** → cap the quantity by budget, storage, and supplier capacity;
-   raise to the supplier's minimum order quantity; if nothing feasible satisfies MOQ,
-   **escalate**.
+1. **Evidence gate** → no forecast, or recent sales deviate >50% → **investigate**.
+2. **Already covered** → `net_requirement ≤ 0` → **reject**.
+3. **Reconcile** → accept if within ±10% of net requirement; otherwise adjust toward it.
+4. **Apply hard constraints** → cap by budget, storage, supplier capacity; raise to MOQ; if
+   nothing feasible satisfies MOQ, **escalate**.
 5. Final decision is **accept** (qty unchanged) or **modify** (qty changed).
 
 ---
@@ -253,9 +268,11 @@ python -m app.eval.runner                   # evaluation scorecard (6/6)
 
 ### Using a real LLM
 
-Set `OPENAI_API_KEY` in `.env`. The agent's decisions are identical either way (numbers are
-deterministic); a key only enables OpenAI-generated buyer-facing narration and real
-embeddings for RAG. The provider is swappable (`app/llm/provider.py`).
+Set `OPENAI_API_KEY` in `.env`. **With a key**, the LLM genuinely drives the agent: it calls
+tools to investigate and proposes the decision, and the deterministic guardrail validates /
+overrides it. **Without a key**, a deterministic planner produces the same
+constraint-respecting decisions so everything runs offline. Either way the *numbers* come
+from code, never the model. The provider is swappable (`app/llm/provider.py`).
 
 ---
 
@@ -285,10 +302,12 @@ buyit/
 
 ## Design notes & trade-offs
 
-- **Hybrid over pure-LLM.** Keeping arithmetic and the final decision deterministic makes
-  the agent reliable, testable, and auditable — the LLM can't fabricate a budget number.
-  This mirrors the JD's emphasis on guardrails and preventing "incorrect or unintended
-  actions."
+- **LLM-driven with a deterministic guardrail.** The model does the reasoning and
+  tool-calling (it's a real agent), but a deterministic layer computes every number and can
+  override a wrong decision before it executes. This gives agentic flexibility *and*
+  reliability — the JD's exact "guardrails/validation to prevent incorrect or unintended
+  actions." The override is surfaced in the trace and UI, which doubles as hallucination
+  detection.
 - **Postgres + pgvector, with a SQLite fallback.** The Docker/demo path uses real pgvector
   cosine search; tests and the no-infra path fall back to in-Python cosine so everything
   runs anywhere.

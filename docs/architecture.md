@@ -5,9 +5,9 @@ state machine, the data model, and the request lifecycle.
 
 ## Design goals
 
-1. **Reliable decisions.** The LLM must not be able to invent numbers or take an action the
-   business rules forbid. → deterministic tools + pure policy own all math; the validator is
-   authoritative.
+1. **Reliable decisions.** The LLM drives the reasoning and proposes the decision, but it
+   must not be able to invent numbers or take an action the business rules forbid. →
+   deterministic tools own all math and a guardrail validates and can override the LLM.
 2. **Genuine feedback loop.** The agent must detect when an action's *actual* outcome differs
    from what it expected and recover. → post-action validation re-reads persisted state and
    can loop back to re-plan.
@@ -20,7 +20,8 @@ state machine, the data model, and the request lifecycle.
 |---|---|---|---|
 | API | `app/api/routes.py`, `app/main.py` | REST surface, request validation, CORS | runner, eval, db |
 | Orchestration | `app/agent/graph.py`, `nodes.py`, `runner.py` | LangGraph state machine + HITL drive | tools, rag, llm, policy |
-| Decision policy | `app/agent/policy.py` | Pure map: analysis → decision | (none) |
+| LLM tool schema | `app/agent/tools_schema.py` | Function specs + dispatch + `assess_purchase` | tools |
+| Decision policy | `app/agent/policy.py` | Pure map: analysis → decision (guardrail baseline) | (none) |
 | Tools | `app/tools/{queries,constraints,actions}.py` | Deterministic reads, math, writes | db |
 | Knowledge | `app/rag/{store,seed_rules}.py` | SOP retrieval (pgvector / cosine) | db, llm embeddings |
 | Model access | `app/llm/provider.py` | Chat + embeddings, OpenAI or stub | config |
@@ -34,15 +35,20 @@ pure and have no I/O, so they carry most of the test weight.
 Nodes and transitions (`app/agent/graph.py`):
 
 ```
-START → ingest → gather_context → analyze → decide
-decide ──(reject | investigate)──────────────→ finalize
-decide ──(escalate)──────────────────────────→ escalate → finalize
-decide ──(accept | modify | source_alternate | confirm_existing)──→ approval_gate → act
+START → ingest → agent_reason → guardrail
+  agent_reason = LLM investigates via tool calls, proposes a decision
+  guardrail    = deterministic recompute + validate/override the proposal
+guardrail ──(reject | investigate)───────────→ finalize
+guardrail ──(escalate)───────────────────────→ escalate → finalize
+guardrail ──(accept | modify | source_alternate | confirm_existing)──→ approval_gate → act
 act → validate
 validate ──(acceptable)──────────────────────→ finalize
-validate ──(discrepancy, iters remain)───────→ replan → analyze     ← the feedback loop
+validate ──(discrepancy, iters remain)───────→ replan → agent_reason  ← the feedback loop
 validate ──(discrepancy, no iters)───────────→ escalate → finalize
 ```
+
+`agent_reason` runs the OpenAI function-calling loop when a key is present, and a
+deterministic planner (producing the guardrail baseline) otherwise.
 
 - The graph is compiled with a `MemorySaver` checkpointer and `interrupt_before=["act"]`.
 - `runner.py` invokes the graph, then repeatedly resumes past `act` for low-risk actions;
@@ -59,7 +65,8 @@ Scenario 2 is where the loop is visible. Phase is derived from state:
    `simulate_supplier_response` and the supplier's seeded `available_capacity`).
 3. `validate`: expected 500 vs confirmed 250; inventory doesn't cover the gap → emits
    `feedback{gap: 250}`.
-4. `replan` → `analyze` (now `cover_gap`): evaluates the alternate supplier for exactly 250.
+4. `replan` → `agent_reason`/`guardrail` (now `cover_gap`): the agent re-reasons with the
+   shortfall feedback and evaluates the alternate supplier for exactly 250.
 5. `decide` = `source_alternate` → `act` creates the alternate PO → `validate` passes → done.
 
 ## Data model
@@ -87,7 +94,7 @@ see the comments in `seed.py` for the arithmetic.
 ```
 POST /runs {scenario, situation}
   → runner.start_run: new run_id, graph.invoke(initial)
-  → graph runs ingest…decide; routes to act (pauses) or a terminal node
+  → graph runs ingest → agent_reason → guardrail; routes to act (pauses) or a terminal node
   → runner auto-resumes low-risk act→validate→…; stops at HITL if needed
   → persist AgentRun; return full public state (decision, validation, trace, …)
 
