@@ -11,16 +11,24 @@ export function CreatePOForm({ skus = [], vendors = [], onClose, onCreated }) {
   const [sku, setSku] = useState(skus[0]?.sku || "");
   const [vendorId, setVendorId] = useState(vendors[0]?.vendor_id || "");
   const [qty, setQty] = useState(100);
+  const [confirmedQty, setConfirmedQty] = useState(0);
   const [unitPrice, setUnitPrice] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
+  const qtyNum = parseInt(qty, 10) || 0;
+  const confNum = parseInt(confirmedQty, 10) || 0;
+
   async function submit(e) {
     e.preventDefault();
+    if (confNum > qtyNum) {
+      setError("Confirmed qty cannot exceed ordered qty.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const body = { sku, vendor_id: vendorId, qty: parseInt(qty, 10) };
+      const body = { sku, vendor_id: vendorId, qty: qtyNum, confirmed_qty: confNum };
       if (unitPrice !== "") body.unit_price = parseFloat(unitPrice);
       await api.createPurchaseOrder(body);
       onCreated();
@@ -64,7 +72,7 @@ export function CreatePOForm({ skus = [], vendors = [], onClose, onCreated }) {
             ))}
           </select>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div className="flex flex-col gap-1.5">
             <label className={label}>Quantity</label>
             <input
@@ -74,6 +82,17 @@ export function CreatePOForm({ skus = [], vendors = [], onClose, onCreated }) {
               value={qty}
               onChange={(e) => setQty(e.target.value)}
               required
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className={label}>Confirmed</label>
+            <input
+              className={field}
+              type="number"
+              min="0"
+              max={qtyNum}
+              value={confirmedQty}
+              onChange={(e) => setConfirmedQty(e.target.value)}
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -90,7 +109,18 @@ export function CreatePOForm({ skus = [], vendors = [], onClose, onCreated }) {
           </div>
         </div>
         <p className="text-body-sm font-body-sm text-on-surface-variant">
-          Leave unit price blank to use the vendor's contracted price.
+          Blank unit price uses the vendor's contracted price.
+          {confNum > 0 && (
+            <>
+              {" "}Confirmed{" "}
+              <strong className="text-on-surface">{confNum}</strong> unit
+              {confNum === 1 ? "" : "s"} will move into on-hand inventory (status:{" "}
+              <strong className="text-on-surface">
+                {confNum >= qtyNum ? "confirmed" : "partial"}
+              </strong>
+              ).
+            </>
+          )}
         </p>
         {error && (
           <div className="rounded-lg border border-error-container bg-error-container px-3 py-2 text-body-sm text-on-error-container">

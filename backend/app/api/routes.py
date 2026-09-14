@@ -24,7 +24,7 @@ from app.db.models import (
 from app.db.session import session_scope
 from app.eval.runner import run_eval
 from app.presets import PRESETS
-from app.tools.actions import create_vendor_po
+from app.tools.actions import create_vendor_po, receive_into_inventory
 
 router = APIRouter()
 settings = get_settings()
@@ -46,12 +46,27 @@ class CreatePORequest(BaseModel):
     qty: int
     unit_price: Optional[float] = None
     expected_delivery_days: Optional[int] = None
+    confirmed_qty: int = 0
+
+
+class ReceivePORequest(BaseModel):
+    confirmed_qty: int
 
 
 class CreateOrderRequest(BaseModel):
     sku: str
     qty: int
     status: str = "open"
+
+
+class CreateProductRequest(BaseModel):
+    sku: str
+    name: str
+    category: str
+    unit_cost: float
+    on_hand: int = 0
+    safety_stock: int = 0
+    reorder_point: int = 0
 
 
 @router.get("/health")
@@ -98,6 +113,26 @@ def inventory():
             for p, inv in rows]}
 
 
+@router.post("/inventory")
+def create_inventory_item(req: CreateProductRequest):
+    sku = req.sku.strip()
+    if not sku:
+        raise HTTPException(400, "sku is required")
+    if req.unit_cost < 0:
+        raise HTTPException(400, "unit_cost must be non-negative")
+    with session_scope() as s:
+        if s.get(Product, sku):
+            raise HTTPException(409, f"SKU {sku} already exists")
+        s.add(Product(sku=sku, name=req.name, category=req.category, unit_cost=req.unit_cost))
+        s.add(Inventory(sku=sku, on_hand=req.on_hand, reserved=0,
+                        safety_stock=req.safety_stock, reorder_point=req.reorder_point))
+        s.flush()
+        return {"item": {
+            "sku": sku, "name": req.name, "category": req.category, "unit_cost": req.unit_cost,
+            "on_hand": req.on_hand, "reserved": 0, "safety_stock": req.safety_stock,
+            "reorder_point": req.reorder_point}}
+
+
 @router.get("/vendors")
 def vendors():
     with session_scope() as s:
@@ -121,6 +156,8 @@ def purchase_orders():
 def create_purchase_order(req: CreatePORequest):
     if req.qty <= 0:
         raise HTTPException(400, "qty must be positive")
+    if not 0 <= req.confirmed_qty <= req.qty:
+        raise HTTPException(400, "confirmed_qty must be between 0 and qty")
     with session_scope() as s:
         if not s.get(Product, req.sku):
             raise HTTPException(404, f"unknown SKU {req.sku}")
@@ -140,6 +177,19 @@ def create_purchase_order(req: CreatePORequest):
 
         po = create_vendor_po(s, sku=req.sku, vendor_id=req.vendor_id, qty=req.qty,
                               unit_price=unit_price, expected_delivery_days=delivery)
+        if req.confirmed_qty > 0:
+            po = receive_into_inventory(s, po["po_id"], req.confirmed_qty)
+        return {"purchase_order": po}
+
+
+@router.post("/purchase-orders/{po_id}/receive")
+def receive_purchase_order(po_id: str, req: ReceivePORequest):
+    with session_scope() as s:
+        try:
+            po = receive_into_inventory(s, po_id, req.confirmed_qty)
+        except ValueError as e:
+            msg = str(e)
+            raise HTTPException(404 if "not found" in msg else 400, msg)
         return {"purchase_order": po}
 
 

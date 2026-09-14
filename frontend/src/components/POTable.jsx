@@ -1,4 +1,5 @@
 import { Pill } from "./Badge.jsx";
+import { Icon } from "./Icon.jsx";
 
 const STATUS_TONE = {
   open: "blue",
@@ -8,7 +9,7 @@ const STATUS_TONE = {
   cancelled: "gray",
 };
 
-export function POTable({ pos, action }) {
+export function POTable({ pos, action, onReceive }) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -40,6 +41,7 @@ export function POTable({ pos, action }) {
                   <th scope="col" className="px-4 py-3 text-right font-semibold">Confirmed</th>
                   <th scope="col" className="px-4 py-3 text-right font-semibold">Value</th>
                   <th scope="col" className="px-4 py-3 text-center font-semibold">Status</th>
+                  <th scope="col" className="px-4 py-3 text-center font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/60 font-body-md text-body-md">
@@ -61,6 +63,21 @@ export function POTable({ pos, action }) {
                     </td>
                     <td className="px-4 py-3.5 text-center">
                       <Pill tone={STATUS_TONE[p.status] || "gray"}>{p.status}</Pill>
+                    </td>
+                    <td className="px-4 py-3.5 text-center">
+                      {p.confirmed_qty < p.qty && p.status !== "cancelled" ? (
+                        <button
+                          onClick={() => onReceive?.(p)}
+                          className="inline-flex items-center gap-1 rounded border border-outline-variant bg-surface-container px-2.5 py-1 text-label-xs font-label-xs text-on-surface transition-colors hover:bg-surface-container-high"
+                        >
+                          <Icon name="inventory" className="text-[14px]" />
+                          Receive
+                        </button>
+                      ) : (
+                        <span className="text-label-xs font-label-xs text-on-surface-variant">
+                          —
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -9,6 +9,8 @@ import { LogsTable } from "./components/LogsTable.jsx";
 import { EvalPanel } from "./components/EvalPanel.jsx";
 import { CreatePOForm } from "./components/CreatePOForm.jsx";
 import { CreateOrderForm } from "./components/CreateOrderForm.jsx";
+import { CreateSkuForm } from "./components/CreateSkuForm.jsx";
+import { ReceivePOForm } from "./components/ReceivePOForm.jsx";
 import { Pill } from "./components/Badge.jsx";
 import { Icon } from "./components/Icon.jsx";
 
@@ -40,18 +42,27 @@ export default function App() {
   const [data, setData] = useState({});
   const [error, setError] = useState(null);
   const [skus, setSkus] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [vendorList, setVendorList] = useState([]);
-  const [creating, setCreating] = useState(null); // "po" | "order" | null
+  const [creating, setCreating] = useState(null); // "po" | "order" | "sku" | null
+  const [receivingPo, setReceivingPo] = useState(null);
   const [refreshTick, setRefreshTick] = useState(0);
+
+  // Reference data for the create-record forms (SKUs, categories, vendors).
+  function loadRefData() {
+    api.inventory()
+      .then((d) => {
+        setSkus(d.inventory.map((r) => ({ sku: r.sku, name: r.name })));
+        setCategories([...new Set(d.inventory.map((r) => r.category))].sort());
+      })
+      .catch(() => {});
+    api.vendors().then((d) => setVendorList(d.vendors)).catch(() => {});
+  }
 
   useEffect(() => {
     api.scenarios().then((d) => setPresets(d.presets)).catch((e) => setError(String(e)));
     api.health().then(setHealth).catch(() => {});
-    // Reference data for the create-record forms (SKUs + vendors).
-    api.inventory()
-      .then((d) => setSkus(d.inventory.map((r) => ({ sku: r.sku, name: r.name }))))
-      .catch(() => {});
-    api.vendors().then((d) => setVendorList(d.vendors)).catch(() => {});
+    loadRefData();
   }, []);
 
   // Fetch data for the active data-tab.
@@ -79,7 +90,9 @@ export default function App() {
 
   function onRecordCreated() {
     setCreating(null);
+    setReceivingPo(null);
     setRefreshTick((t) => t + 1);
+    loadRefData(); // keep SKU/category lists fresh for the other create forms
   }
 
   async function launch(preset) {
@@ -322,6 +335,15 @@ export default function App() {
             title="Inventory Management"
             badge="LIVE SYNC"
             subtitle="Real-time warehouse counts, safety buffers, and agent replenishment thresholds."
+            headerAction={
+              <button
+                onClick={() => setCreating("sku")}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-title-md font-title-md text-on-primary shadow-sm transition-all hover:bg-primary-container active:scale-[0.98]"
+              >
+                <Icon name="add" className="text-[18px]" />
+                New SKU
+              </button>
+            }
             stats={[
               { label: "Total SKUs", value: inv.length, icon: "inventory_2" },
               {
@@ -397,6 +419,7 @@ export default function App() {
         {tab === "pos" && (
           <POTable
             pos={data.pos}
+            onReceive={setReceivingPo}
             action={
               <button
                 onClick={() => setCreating("po")}
@@ -465,6 +488,20 @@ export default function App() {
         <CreateOrderForm
           skus={skus}
           onClose={() => setCreating(null)}
+          onCreated={onRecordCreated}
+        />
+      )}
+      {creating === "sku" && (
+        <CreateSkuForm
+          categories={categories}
+          onClose={() => setCreating(null)}
+          onCreated={onRecordCreated}
+        />
+      )}
+      {receivingPo && (
+        <ReceivePOForm
+          po={receivingPo}
+          onClose={() => setReceivingPo(null)}
           onCreated={onRecordCreated}
         />
       )}

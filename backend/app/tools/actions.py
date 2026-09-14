@@ -10,11 +10,40 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import Budget, Product, VendorProduct, VendorPurchaseOrder
+from app.db.models import Budget, Inventory, Product, VendorProduct, VendorPurchaseOrder
 
 
 def _new_po_id() -> str:
     return "PO-" + uuid.uuid4().hex[:8].upper()
+
+
+def _status_for(confirmed_qty: int, qty: int) -> str:
+    if confirmed_qty <= 0:
+        return "open"
+    return "confirmed" if confirmed_qty >= qty else "partial"
+
+
+def receive_into_inventory(session: Session, po_id: str, new_confirmed_qty: int) -> dict:
+    """Set a PO's confirmed qty, move the newly-confirmed delta into on-hand stock,
+    and advance the PO status. Confirmed qty can only go up (you can't un-receive)."""
+    po = session.get(VendorPurchaseOrder, po_id)
+    if not po:
+        raise ValueError(f"PO {po_id} not found")
+    if new_confirmed_qty < po.confirmed_qty:
+        raise ValueError("confirmed_qty cannot be reduced below what is already received")
+    if new_confirmed_qty > po.qty:
+        raise ValueError("confirmed_qty cannot exceed the ordered qty")
+
+    delta = new_confirmed_qty - po.confirmed_qty
+    po.confirmed_qty = new_confirmed_qty
+    po.status = _status_for(new_confirmed_qty, po.qty)
+
+    if delta:
+        inv = session.get(Inventory, po.sku)
+        if inv:
+            inv.on_hand += delta
+    session.flush()
+    return _po_dict(po)
 
 
 def create_vendor_po(session: Session, sku: str, vendor_id: str, qty: int,

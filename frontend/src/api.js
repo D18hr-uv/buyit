@@ -20,10 +20,17 @@ export const api = {
       body: JSON.stringify({ approved, edited_qty: editedQty ?? null }),
     }),
   inventory: () => req("/inventory"),
+  createInventoryItem: (body) =>
+    req("/inventory", { method: "POST", body: JSON.stringify(body) }),
   vendors: () => req("/vendors"),
   purchaseOrders: () => req("/purchase-orders"),
   createPurchaseOrder: (body) =>
     req("/purchase-orders", { method: "POST", body: JSON.stringify(body) }),
+  receivePurchaseOrder: (poId, confirmedQty) =>
+    req(`/purchase-orders/${poId}/receive`, {
+      method: "POST",
+      body: JSON.stringify({ confirmed_qty: confirmedQty }),
+    }),
   clientOrders: () => req("/client-orders"),
   createClientOrder: (body) =>
     req("/client-orders", { method: "POST", body: JSON.stringify(body) }),
