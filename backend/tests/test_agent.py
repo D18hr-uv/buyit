@@ -1,7 +1,24 @@
 """End-to-end agent tests (stub LLM, SQLite) for all decision branches + the S2 loop."""
-from app.agent import runner
+from app.agent import nodes, runner
 
 NODE = "MFC-BOG"
+
+
+def test_guardrail_overrides_hallucinated_quantity():
+    """If the (LLM) proposal contradicts the verified numbers, the guardrail corrects it."""
+    state = {
+        "scenario": "S1",
+        "situation": {"sku": "SKU-WATER", "node_id": NODE, "recommended_qty": 800},
+        "feedback": [],
+        # Pretend the LLM hallucinated a wildly-too-large quantity.
+        "proposed_decision": {"decision_type": "accept", "qty": 9999,
+                              "supplier_id": "SUP-AQUA", "rationale": "buy lots"},
+    }
+    out = nodes.guardrail(state)
+    d = out["decision"]
+    assert d["overridden"] is True
+    assert d["qty"] == 800          # corrected to the true net requirement
+    assert d["llm_proposed"]["qty"] == 9999
 
 
 def _s1(sku, qty=800):
