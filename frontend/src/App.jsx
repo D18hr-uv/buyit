@@ -11,6 +11,7 @@ import { CreatePOForm } from "./components/CreatePOForm.jsx";
 import { CreateOrderForm } from "./components/CreateOrderForm.jsx";
 import { CreateSkuForm } from "./components/CreateSkuForm.jsx";
 import { ReceivePOForm } from "./components/ReceivePOForm.jsx";
+import { AgentDrawer } from "./components/AgentDrawer.jsx";
 import { Pill } from "./components/Badge.jsx";
 import { Icon } from "./components/Icon.jsx";
 
@@ -47,6 +48,8 @@ export default function App() {
   const [creating, setCreating] = useState(null); // "po" | "order" | "sku" | null
   const [receivingPo, setReceivingPo] = useState(null);
   const [refreshTick, setRefreshTick] = useState(0);
+  // Contextual agent run shown in a slide-over drawer over the current tab.
+  const [drawer, setDrawer] = useState(null); // { run, busy, subtitle } | null
 
   // Reference data for the create-record forms (SKUs, categories, vendors).
   function loadRefData() {
@@ -101,6 +104,33 @@ export default function App() {
       setRefreshTick((t) => t + 1);
     } catch (e) {
       setError(String(e));
+    }
+  }
+
+  // Launch a scenario run in-context (from an inventory/PO row) into the drawer.
+  async function launchContextual(scenario, situation, subtitle) {
+    setError(null);
+    setDrawer({ run: null, busy: true, subtitle });
+    try {
+      const r = await api.startRun(scenario, situation);
+      setDrawer({ run: r, busy: false, subtitle });
+      setRefreshTick((t) => t + 1); // a run may create a PO / move stock
+    } catch (e) {
+      setError(String(e));
+      setDrawer(null);
+    }
+  }
+
+  async function drawerDecide(approved, editedQty) {
+    if (!drawer?.run) return;
+    setDrawer((d) => ({ ...d, busy: true }));
+    try {
+      const r = await api.approve(drawer.run.run_id, approved, editedQty);
+      setDrawer((d) => ({ ...d, run: r, busy: false }));
+      setRefreshTick((t) => t + 1);
+    } catch (e) {
+      setError(String(e));
+      setDrawer((d) => ({ ...d, busy: false }));
     }
   }
 
@@ -421,6 +451,30 @@ export default function App() {
                   );
                 },
               },
+              {
+                key: "_agent",
+                label: "Agent",
+                align: "center",
+                fmt: (_, row) =>
+                  row.on_hand < row.reorder_point ? (
+                    <button
+                      onClick={() =>
+                        launchContextual(
+                          "S1",
+                          { sku: row.sku },
+                          `${row.sku} · S1 reorder review`
+                        )
+                      }
+                      title="Review reorder (agent S1)"
+                      aria-label="Review reorder"
+                      className="inline-flex items-center justify-center rounded-md border border-outline-variant bg-surface-container p-1.5 text-primary transition-colors hover:bg-surface-container-high"
+                    >
+                      <Icon name="smart_toy" className="text-[16px]" />
+                    </button>
+                  ) : (
+                    <span className="text-label-xs font-label-xs text-on-surface-variant">—</span>
+                  ),
+              },
             ]}
           />
         )}
@@ -430,6 +484,13 @@ export default function App() {
             pos={data.pos}
             onReceive={setReceivingPo}
             onClosePo={closePo}
+            onReplan={(po) =>
+              launchContextual(
+                "S2",
+                { sku: po.sku, po_id: po.po_id },
+                `${po.po_id} · ${po.sku} · S2 re-plan`
+              )
+            }
             action={
               <button
                 onClick={() => setCreating("po")}
@@ -513,6 +574,16 @@ export default function App() {
           po={receivingPo}
           onClose={() => setReceivingPo(null)}
           onCreated={onRecordCreated}
+        />
+      )}
+      {drawer && (
+        <AgentDrawer
+          run={drawer.run}
+          busy={drawer.busy}
+          subtitle={drawer.subtitle}
+          onApprove={(qty) => drawerDecide(true, qty)}
+          onReject={() => drawerDecide(false)}
+          onClose={() => setDrawer(null)}
         />
       )}
 

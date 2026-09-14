@@ -25,6 +25,8 @@ from app.db.session import session_scope
 from app.eval.runner import run_eval
 from app.presets import PRESETS
 from app.tools.actions import close_po, create_vendor_po, receive_into_inventory
+from app.tools.constraints import compute_net_requirement
+from app.tools.queries import get_demand, get_inventory, get_open_purchase_orders
 
 router = APIRouter()
 settings = get_settings()
@@ -80,11 +82,31 @@ def scenarios():
     return {"presets": PRESETS}
 
 
+def _suggest_recommended_qty(sku: str) -> int:
+    """Net requirement the agent would recommend for this SKU (for contextual runs)."""
+    with session_scope() as s:
+        inv = get_inventory(s, sku)
+        dem = get_demand(s, sku)
+        pos = get_open_purchase_orders(s, sku)
+    net = compute_net_requirement(
+        dem.get("demand_over_horizon", 0), inv["safety_stock"], inv["on_hand"],
+        pos["incoming_open_pos"])
+    return max(0, net)
+
+
 @router.post("/runs")
 def create_run(req: RunRequest):
     if req.scenario not in ("S1", "S2"):
         raise HTTPException(400, "scenario must be 'S1' or 'S2'")
-    return runner.start_run(req.scenario, req.situation)
+    situation = dict(req.situation)
+    # Contextual S1 runs launched from a data row may omit the recommendation;
+    # derive it from the SKU's real net requirement instead of a hardcoded value.
+    if req.scenario == "S1" and "recommended_qty" not in situation:
+        sku = situation.get("sku")
+        if not sku:
+            raise HTTPException(400, "situation.sku is required")
+        situation["recommended_qty"] = _suggest_recommended_qty(sku)
+    return runner.start_run(req.scenario, situation)
 
 
 @router.get("/runs/{run_id}")

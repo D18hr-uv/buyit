@@ -9,7 +9,7 @@ const STATUS_TONE = {
   cancelled: "gray",
 };
 
-export function POTable({ pos, action, onReceive, onClosePo }) {
+export function POTable({ pos, action, onReceive, onClosePo, onReplan }) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -66,21 +66,30 @@ export function POTable({ pos, action, onReceive, onClosePo }) {
                     </td>
                     <td className="px-4 py-3.5 text-center">
                       {p.confirmed_qty < p.qty && !["cancelled", "closed"].includes(p.status) ? (
-                        <div className="flex items-center justify-center gap-1.5">
+                        <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => onReceive?.(p)}
-                            className="inline-flex items-center gap-1 rounded border border-outline-variant bg-surface-container px-2.5 py-1 text-label-xs font-label-xs text-on-surface transition-colors hover:bg-surface-container-high"
+                            title="Receive stock"
+                            aria-label="Receive stock"
+                            className="inline-flex items-center justify-center rounded-md border border-outline-variant bg-surface-container p-1.5 text-on-surface transition-colors hover:bg-surface-container-high"
                           >
-                            <Icon name="inventory" className="text-[14px]" />
-                            Receive
+                            <Icon name="inventory" className="text-[16px]" />
+                          </button>
+                          <button
+                            onClick={() => onReplan?.(p)}
+                            title="Re-plan shortfall (agent S2)"
+                            aria-label="Re-plan shortfall"
+                            className="inline-flex items-center justify-center rounded-md border border-outline-variant bg-surface-container-lowest p-1.5 text-secondary transition-colors hover:bg-surface-container-low"
+                          >
+                            <Icon name="autorenew" className="text-[16px]" />
                           </button>
                           <button
                             onClick={() => onClosePo?.(p)}
-                            title="Close this PO so it accepts no further receiving"
-                            className="inline-flex items-center gap-1 rounded border border-outline-variant bg-surface-container-lowest px-2.5 py-1 text-label-xs font-label-xs text-on-surface-variant transition-colors hover:bg-surface-container-low"
+                            title="Close PO (no further receiving)"
+                            aria-label="Close PO"
+                            className="inline-flex items-center justify-center rounded-md border border-outline-variant bg-surface-container-lowest p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container-low"
                           >
-                            <Icon name="block" className="text-[14px]" />
-                            Close
+                            <Icon name="block" className="text-[16px]" />
                           </button>
                         </div>
                       ) : (

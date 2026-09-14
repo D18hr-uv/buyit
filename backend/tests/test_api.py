@@ -96,6 +96,20 @@ def test_receive_po_rejects_reduction_and_overflow_and_missing():
     ).status_code == 404
 
 
+def test_contextual_s1_run_computes_recommended_qty():
+    # No recommended_qty supplied -> backend derives it from the SKU's net requirement.
+    res = client.post("/runs", json={"scenario": "S1", "situation": {"sku": "SKU-WATER"}})
+    assert res.status_code == 200
+    body = res.json()
+    assert body.get("decision") is not None
+    # SKU-WATER's designed net requirement is 800 -> the agent should act on ~that qty.
+    assert body["decision"].get("qty", 0) > 0
+
+
+def test_contextual_s1_requires_sku():
+    assert client.post("/runs", json={"scenario": "S1", "situation": {}}).status_code == 400
+
+
 def test_close_po_blocks_further_receiving():
     po = client.post(
         "/purchase-orders", json={"sku": SKU, "vendor_id": VENDOR, "qty": 40, "confirmed_qty": 10}
